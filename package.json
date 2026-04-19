@@ -7,9 +7,18 @@
     "start:all": "npx serve src/presentation/examples/"
   },
   "devDependencies": {
+    "@types/katex": "^0.16.8",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "serve": "^14.2.6"
   },
   "dependencies": {
-    "@siglum/engine": "^0.1.4"
+    "@siglum/engine": "^0.1.4",
+    "katex": "^0.16.45",
+    "rehype-raw": "^7.0.0",
+    "rehype-stringify": "^10.0.1",
+    "remark-parse": "^11.0.0",
+    "remark-rehype": "^11.1.2",
+    "unified": "^11.0.5"
   }
 }

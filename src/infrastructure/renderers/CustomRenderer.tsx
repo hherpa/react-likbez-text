@@ -1,3 +1,4 @@
+import React from 'react';
 import { ContentElement, RenderBox } from '../../domain/entities/Document';
 import { CustomElementConfig, RendererOutput } from '../../domain/interfaces/IRenderer';
 
@@ -23,7 +24,7 @@ export const createCustomRenderer = (defaultBox: RenderBox): CustomRenderer => {
               backgroundColor: '#fff3e0',
               border: '1px solid #ffb74d',
             }}>
-              Unknown custom element: {element.metadata?.customType}
+              Unknown custom element: {String(element.metadata?.customType)}
             </div>
           ),
         };

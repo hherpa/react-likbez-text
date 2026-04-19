@@ -1,13 +1,8 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import {
-  LikbezTextProps,
-  ParsedDocument,
-  RendererConfig,
-  CustomElementConfig,
-  RenderBox,
-  ParserOptions,
-} from '../components/LikbezText';
-import { createParser } from '../infrastructure/parsers/UnifiedParser';
+import { useState, useCallback, useMemo } from 'react';
+import { ParsedDocument, RenderBox } from '../../domain/entities/Document';
+import { CustomElementConfig } from '../../domain/interfaces/IRenderer';
+import { ParserOptions } from '../../domain/interfaces/IParser';
+import { createParser } from '../../infrastructure/parsers/UnifiedParser';
 
 export interface UseLikbezTextOptions {
   initialSource?: string;
@@ -55,4 +50,4 @@ export const useLikbezText = (options?: UseLikbezTextOptions): UseLikbezTextRetu
   };
 };
 
-export type { LikbezTextProps, ParsedDocument, RendererConfig, CustomElementConfig, RenderBox, ParserOptions };
+export type { ParserOptions, CustomElementConfig, RenderBox, ParsedDocument };

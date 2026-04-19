@@ -1,10 +1,10 @@
 export interface BoxDimensions {
-  width: number;
-  height: number;
-  minWidth?: number;
-  maxWidth?: number;
-  minHeight?: number;
-  maxHeight?: number;
+  width: number | string;
+  height: number | string;
+  minWidth?: number | string;
+  maxWidth?: number | string;
+  minHeight?: number | string;
+  maxHeight?: number | string;
 }
 
 export interface BoxStyle {

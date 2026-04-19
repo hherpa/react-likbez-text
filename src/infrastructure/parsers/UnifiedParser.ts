@@ -1,5 +1,5 @@
-import { ContentElement, ParsedDocument, RenderBox } from '../domain/entities/Document';
-import { ParserOptions, ParserFactory } from '../domain/interfaces/IParser';
+import { ContentElement, ParsedDocument, RenderBox } from '../../domain/entities/Document';
+import { ParserOptions, ParserFactory } from '../../domain/interfaces/IParser';
 
 let elementIdCounter = 0;
 

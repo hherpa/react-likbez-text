@@ -3,11 +3,10 @@ import {
   ContentElement, 
   ParsedDocument, 
   RenderBox,
-  ParserOptions,
-  RendererConfig,
-  CustomElementConfig,
-} from './domain';
-import { createParser, createKaTeXRenderer, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from './infrastructure';
+} from '../../domain/entities/Document';
+import { ParserOptions } from '../../domain/interfaces/IParser';
+import { RendererConfig, CustomElementConfig } from '../../domain/interfaces/IRenderer';
+import { createParser, createKaTeXRenderer, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from '../../infrastructure';
 
 export interface LikbezTextProps {
   source: string;
@@ -98,7 +97,7 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
 
   useEffect(() => {
     const renderSiglumElements = async () => {
-      const siglumElements = parsedDocument.elements.filter(e => e.type === 'siglum');
+      const siglumElements = parsedDocument.elements.filter((e: ContentElement) => e.type === 'siglum');
       const results: Record<string, React.ReactNode> = {};
 
       for (const element of siglumElements) {
@@ -197,7 +196,7 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
       }}
     >
       <div className="likbez-text-content">
-        {parsedDocument.elements.map((element) => (
+        {parsedDocument.elements.map((element: ContentElement) => (
           <div
             key={element.id}
             style={{

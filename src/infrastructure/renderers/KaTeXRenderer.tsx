@@ -13,12 +13,12 @@ export const createKaTeXRenderer = (defaultBox: RenderBox): KaTeXRenderer => {
       
       try {
         html = katex.renderToString(element.rawContent, {
-          displayMode: config?.displayMode ?? element.rawContent.includes('\\') || element.rawContent.includes('\\begin'),
+          displayMode: config?.displayMode ?? (element.rawContent.includes('\\') || element.rawContent.includes('\\begin')),
           throwOnError: config?.throwOnError ?? false,
           errorColor: config?.errorColor ?? '#cc0000',
           macros: config?.macros ?? {},
-          strict: config?.strict ?? false,
-          trust: config?.trust ?? false,
+          strict: config?.strict as katex.KatexOptions['strict'] ?? false,
+          trust: config?.trust as katex.KatexOptions['trust'] ?? false,
         });
       } catch (error) {
         html = `<span style="color: ${config?.errorColor ?? '#cc0000'}">KaTeX Error: ${error}</span>`;
