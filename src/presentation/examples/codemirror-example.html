@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LikbezText - CodeMirror Example</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/material-darker.min.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: #1e1e1e; color: #e0e0e0; min-height: 100vh; }
+    .container { display: flex; height: 100vh; }
+    .editor-pane { width: 50%; display: flex; flex-direction: column; border-right: 1px solid #333; background: #1e1e1e; }
+    .editor-pane-header { padding: 16px 20px; background: #252525; border-bottom: 1px solid #333; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
+    .badge { background: #2196F3; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .codemirror-wrapper { flex: 1; overflow: hidden; }
+    .CodeMirror { height: 100%; font-family: 'Fira Code', monospace; font-size: 14px; }
+    .preview-pane { width: 50%; display: flex; flex-direction: column; background: #fafafa; }
+    .preview-content { flex: 1; padding: 20px; overflow-y: auto; color: #333; }
+    .element-wrapper { margin-bottom: 16px; }
+    .box-katex { padding: 12px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 4px; text-align: center; }
+    .box-siglum { padding: 16px; background: #fff; border: 2px solid #2196F3; border-radius: 8px; }
+    .markdown-content { line-height: 1.6; }
+    .markdown-content h1 { font-size: 2em; margin: 0 0 0.5em 0; border-bottom: 1px solid #eee; }
+    .markdown-content h2 { font-size: 1.5em; margin: 1em 0 0.5em 0; }
+    .markdown-content p { margin: 0 0 1em 0; }
+    .markdown-content code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; color: #c62828; }
+    .markdown-content pre { background: #263238; padding: 16px; border-radius: 6px; color: #e0e0e0; overflow-x: auto; }
+    .markdown-content strong { color: #212121; }
+    .loading { color: #999; font-size: 14px; }
+    .siglum-label { font-weight: 600; margin-bottom: 8px; color: #1976D2; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/gfm/gfm.min.js"></script>
+  <script src="worker.js"></script>
+  <script src="busytex.js"></script>
+
+  <script type="text/babel" data-presets="react">
+    const { useState, useMemo, useEffect, useRef } = React;
+
+    const createRenderBox = (overrides = {}) => ({ dimensions: { width: 'auto', height: 'auto' }, style: { padding: 8, borderRadius: 4 }, ...overrides });
+    const generateId = () => `elem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+    const createParser = () => (source) => {
+      const elements = [];
+      const patterns = [
+        { type: 'siglum', regex: /\{svg-latex\}([\s\S]*?)\{\/svg-latex\}/g },
+        { type: 'katex', regex: /\$\$([^\$]+?)\$\$/g },
+        { type: 'katex', regex: /\$([^\$\n]+?)\$/g },
+      ];
+      const tokenPositions = [];
+      for (const pattern of patterns) {
+        const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
+        let match;
+        while ((match = regex.exec(source)) !== null) {
+          tokenPositions.push({ start: match.index, end: match.index + match[0].length, element: { id: generateId(), type: pattern.type, rawContent: match[1].trim(), renderBox: createRenderBox() } });
+        }
+      }
+      tokenPositions.sort((a, b) => a.start - b.start);
+      const used = new Array(source.length).fill(false);
+      for (const t of tokenPositions) { for (let i = t.start; i < t.end; i++) { if (used[i]) { t.element = null; break; } } if (t.element) for (let i = t.start; i < t.end; i++) used[i] = true; }
+      const filtered = tokenPositions.filter(t => t.element);
+      let lastEnd = 0;
+      for (const t of filtered) {
+        if (t.start > lastEnd) { const text = source.slice(lastEnd, t.start).trim(); if (text) elements.push({ id: generateId(), type: 'markdown', rawContent: text, renderBox: createRenderBox() }); }
+        elements.push(t.element);
+        lastEnd = t.end;
+      }
+      if (lastEnd < source.length) { const text = source.slice(lastEnd).trim(); if (text) elements.push({ id: generateId(), type: 'markdown', rawContent: text, renderBox: createRenderBox() }); }
+      return { elements };
+    };
+
+    const createMarkdownRenderer = (defaultBox) => ({
+      render: (element) => {
+        let html = element.rawContent.replace(/^### (.*$)/gm, '<h3>$1</h3>').replace(/^## (.*$)/gm, '<h2>$1</h2>').replace(/^# (.*$)/gm, '<h1>$1</h1>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\*([^*]+)\*/g, '<em>$1</em>').replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\n/g, '<br>');
+        return { content: <div className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} /> };
+      }
+    });
+
+    const createKaTeXRenderer = (defaultBox) => ({
+      render: (element, config = {}) => {
+        console.log('KaTeX render:', element.rawContent);
+        let html;
+        try { 
+          if (typeof katex === 'undefined') {
+            return { content: <div className="box-katex" style={{color:'red'}}>KaTeX not loaded</div> };
+          }
+          html = katex.renderToString(element.rawContent, { displayMode: element.rawContent.includes('\\'), throwOnError: false, ...config }); 
+        }
+        catch (e) { console.error('KaTeX error:', e); html = `<span style="color:#cc0000">KaTeX Error: ${e.message}</span>`; }
+        return { content: <div className="box-katex" dangerouslySetInnerHTML={{ __html: html }} /> };
+      }
+    });
+
+    const createSiglumRenderer = (defaultBox) => {
+      let compiler = null;
+      return {
+        init: async () => {
+          if (typeof SiglumCompiler === 'undefined') { console.warn('Siglum not found'); return; }
+          compiler = new SiglumCompiler({ bundlesUrl: '/bundles', wasmUrl: '/busytex.wasm', workerUrl: '/worker.js' });
+          await compiler.init();
+          console.log('Siglum ready');
+        },
+        render: async (element) => {
+          if (!compiler) return { content: <div className="loading">Initializing Siglum...</div> };
+          const latex = `\\documentclass{article}\\usepackage{amsmath}\\begin{document}${element.rawContent}\\end{document}`;
+          const result = await compiler.compile(latex, { engine: 'pdflatex' });
+          if (result.success && result.pdf) { 
+            const pdfBuffer = result.pdfIsShared ? new Uint8Array(result.pdf).slice() : new Uint8Array(result.pdf);
+            const url = URL.createObjectURL(new Blob([pdfBuffer], { type: 'application/pdf' })); 
+            return { content: (<div className="box-siglum"><div className="siglum-label">LaTeX (Siglum)</div><object data={url} type="application/pdf" width="100%" height="300px" /></div>)}; 
+          }
+          return { content: <div className="box-siglum" style={{color:'#c62828'}}>Error: {result.error}</div> };
+        }
+      };
+    };
+
+    const LikbezText = ({ source, katexConfig }) => {
+      const [siglumReady, setSiglumReady] = useState(false);
+      const [siglumResults, setSiglumResults] = useState({});
+      const siglumRef = useRef(null);
+      const defaultBox = createRenderBox();
+      const parserFn = useMemo(() => createParser(), []);
+      const parsed = useMemo(() => parserFn(source), [source, parserFn]);
+      useEffect(() => { siglumRef.current = createSiglumRenderer(defaultBox); siglumRef.current.init().then(() => setSiglumReady(true)).catch(console.error); }, []);
+      useEffect(() => { const render = async () => { const els = parsed.elements.filter(e => e.type === 'siglum'); const results = {}; for (const el of els) if (siglumRef.current) results[el.id] = (await siglumRef.current.render(el)).content; setSiglumResults(results); }; if (siglumReady) render(); }, [parsed, siglumReady]);
+      const renderEl = (el) => { switch (el.type) { case 'markdown': return createMarkdownRenderer(defaultBox).render(el).content; case 'katex': return createKaTeXRenderer(defaultBox).render(el, katexConfig).content; case 'siglum': return siglumResults[el.id] || <div className="loading">Rendering LaTeX...</div>; default: return <div>Unknown: {el.type}</div>; } };
+      return <div>{parsed.elements.map(el => <div key={el.id} className="element-wrapper">{renderEl(el)}</div>)}</div>;
+    };
+
+    const CodeMirrorEditor = ({ value, onChange }) => {
+      const ref = useRef(null);
+      const cmRef = useRef(null);
+      useEffect(() => { if (ref.current && !cmRef.current) { cmRef.current = CodeMirror.fromTextArea(ref.current, { mode: 'gfm', theme: 'material-darker', lineNumbers: true, lineWrapping: true }); cmRef.current.on('change', cm => onChange(cm.getValue())); } return () => { if (cmRef.current) { cmRef.current.toTextArea(); cmRef.current = null; } }; }, []); useEffect(() => { if (cmRef.current && cmRef.current.getValue() !== value) cmRef.current.setValue(value); }, [value]); return <div className="codemirror-wrapper"><textarea ref={ref} /></div>;
+    };
+
+    const DEFAULT_SOURCE = `# Research Paper
+
+## Abstract
+
+Welcome to **LikbezText** with CodeMirror!
+
+## Math
+
+Inline: $E = mc^2$
+
+Display: $$\\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}$$
+
+## LaTeX (Siglum)
+
+{svg-latex}
+\\begin{align}
+  f(x) &= \\int_{-\\infty}^{\\infty} \\hat{f}(\\xi)e^{2\\pi i \\xi x} d\\xi \\\\
+  \\mathcal{L}\\{f(t)\\} &= F(s) = \\int_0^{\\infty} e^{-st} f(t) dt
+\\end{align}
+{/svg-latex}
+`;
+
+    const App = () => {
+      const [source, setSource] = useState(DEFAULT_SOURCE);
+      return (
+        <div className="container">
+          <div className="editor-pane">
+            <div className="editor-pane-header"><span>CodeMirror</span><span className="badge">Markdown + KaTeX + LaTeX</span></div>
+            <CodeMirrorEditor value={source} onChange={setSource} />
+          </div>
+          <div className="preview-pane">
+            <div className="editor-pane-header" style={{background:'#fafafa',color:'#333',borderBottom:'1px solid #ddd'}}>Preview</div>
+            <div className="preview-content"><LikbezText source={source} katexConfig={{ displayMode: true }} /></div>
+          </div>
+        </div>
+      );
+    };
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

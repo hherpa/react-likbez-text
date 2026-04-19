@@ -1,0 +1,15 @@
+{
+  "name": "likbez-text-examples",
+  "version": "1.0.0",
+  "scripts": {
+    "start:textarea": "npx serve src/presentation/examples/textarea-example.html",
+    "start:codemirror": "npx serve src/presentation/examples/codemirror-example.html",
+    "start:all": "npx serve src/presentation/examples/"
+  },
+  "devDependencies": {
+    "serve": "^14.2.6"
+  },
+  "dependencies": {
+    "@siglum/engine": "^0.1.4"
+  }
+}
