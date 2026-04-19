@@ -149,6 +149,7 @@
     // Siglum Renderer
     const createSiglumRenderer = (defaultBox) => {
       let compiler = null;
+      let logs = [];
       return {
         init: async () => {
           if (typeof SiglumCompiler === 'undefined') { console.warn('Siglum not found'); return; }
@@ -156,14 +157,27 @@
             bundlesUrl: '/bundles',
             wasmUrl: '/busytex.wasm',
             workerUrl: '/worker.js',
+            verbose: true,
+            onLog: (msg) => { logs.push(msg); console.log('[TeX]', msg); },
           });
           await compiler.init();
           console.log('Siglum initialized');
         },
         render: async (element) => {
+          logs = []; // Clear logs before each compile
           if (!compiler) return { content: <div className="loading">Initializing Siglum...</div> };
           const latex = `\\documentclass{article}\\usepackage{amsmath}\\begin{document}${element.rawContent}\\end{document}`;
-          const result = await compiler.compile(latex, { engine: 'pdflatex' });
+          let result;
+          try {
+            result = await compiler.compile(latex, { engine: 'pdflatex' });
+          } catch (e) {
+            return { content: <div className="box-siglum" style={{color:'#c62828'}}>Compilation error: {String(e)}</div> };
+          }
+          
+          if (!result) {
+            return { content: <div className="box-siglum" style={{color:'#c62828'}}>No result from compiler</div> };
+          }
+          
           if (result.success && result.pdf) {
             // Copy from SharedArrayBuffer to regular ArrayBuffer
             const pdfBuffer = result.pdfIsShared ? new Uint8Array(result.pdf).slice() : new Uint8Array(result.pdf);
@@ -175,7 +189,17 @@
               </div>
             )};
           }
-          return { content: <div className="box-siglum" style={{color:'#c62828'}}>Error: {result.error}</div> };
+          
+          // Show error logs from TeX
+          const texErrors = logs.filter(l => l.includes('[TeX ERR]') || l.includes('! LaTeX Error') || l.includes('Error:'));
+          const errorText = texErrors.length > 0 ? texErrors.join('\n') : 'Unknown error (check console for details)';
+          
+          return { content: (
+            <div className="box-siglum" style={{color:'#c62828', fontSize:'11px', maxHeight:'200px', overflow:'auto'}}>
+              <strong>LaTeX Error:</strong>
+              <pre style={{whiteSpace:'pre-wrap', margin:'8px 0 0 0'}}>{errorText}</pre>
+            </div>
+          )};
         }
       };
     };
