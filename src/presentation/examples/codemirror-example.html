@@ -34,15 +34,27 @@
 </head>
 <body>
   <div id="root"></div>
+  <script type="importmap">
+  {
+    "imports": {
+      "@siglum/engine": "/node_modules/@siglum/engine/src/index.js",
+      "@siglum/filesystem": "/node_modules/@siglum/filesystem/dist/index.js"
+    }
+  }
+  </script>
+  <script type="module">
+    import { SiglumCompiler } from '@siglum/engine';
+    window.SiglumCompiler = SiglumCompiler;
+  </script>
   <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="worker.js"></script>
+  <script src="busytex.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/mode/overlay.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/gfm/gfm.min.js"></script>
-  <script src="worker.js"></script>
-  <script src="busytex.js"></script>
 
   <script type="text/babel" data-presets="react">
     const { useState, useMemo, useEffect, useRef } = React;
