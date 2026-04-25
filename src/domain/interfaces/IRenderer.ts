@@ -29,6 +29,7 @@ export interface SiglumRendererConfig {
   engine?: 'pdflatex' | 'xelatex' | 'auto';
   bundlesUrl?: string;
   wasmUrl?: string;
+  workerUrl?: string;
   ctanProxyUrl?: string;
   onLog?: (msg: string) => void;
   onProgress?: (stage: string, detail: any) => void;

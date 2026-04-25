@@ -1,7 +1,7 @@
 import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 import remarkRehype from 'remark-rehype';
-import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import rehypeStringify from 'rehype-stringify';
 import { ContentElement, RenderBox } from '../../domain/entities/Document';
 import { MarkdownRendererConfig, RendererOutput } from '../../domain/interfaces/IRenderer';
@@ -17,8 +17,8 @@ export const createMarkdownRenderer = (defaultBox: RenderBox): MarkdownRenderer 
 
       const processor = unified()
         .use(remarkParse)
-        .use(remarkRehype, { allowDangerousHtml: true })
-        .use(rehypeRaw)
+        .use(remarkRehype, { allowDangerousHtml: false })
+        .use(rehypeSanitize)
         .use(rehypeStringify);
 
       const result = processor.processSync(element.rawContent);

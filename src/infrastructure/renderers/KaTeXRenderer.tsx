@@ -9,12 +9,34 @@ export interface KaTeXRenderer {
 export const createKaTeXRenderer = (defaultBox: RenderBox): KaTeXRenderer => {
   return {
     render: (element: ContentElement, config?: KaTeXRendererConfig): RendererOutput => {
+      if (typeof katex === 'undefined') {
+        return {
+          elementId: element.id,
+          type: element.type,
+          box: element.renderBox || defaultBox,
+          content: (
+            <div style={{
+              ...(element.renderBox || defaultBox).style,
+              padding: 8,
+              backgroundColor: '#fff3e0',
+              border: '1px solid #ffb74d',
+              color: '#e65100',
+            }}>
+              KaTeX is not loaded
+            </div>
+          ),
+        };
+      }
+
       let html: string;
-      
+      const displayMode = element.metadata?.displayMode === true 
+        || element.rawContent.includes('\\') 
+        || element.rawContent.includes('\\begin');
+
       try {
         html = katex.renderToString(element.rawContent, {
-          displayMode: config?.displayMode ?? (element.rawContent.includes('\\') || element.rawContent.includes('\\begin')),
-          throwOnError: config?.throwOnError ?? false,
+          displayMode,
+          throwOnError: false,
           errorColor: config?.errorColor ?? '#cc0000',
           macros: config?.macros ?? {},
           strict: config?.strict as katex.KatexOptions['strict'] ?? false,

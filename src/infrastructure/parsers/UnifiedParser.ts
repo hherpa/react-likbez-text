@@ -16,58 +16,71 @@ const defaultRenderBox: RenderBox = {
 const createParser: ParserFactory = (options?: ParserOptions) => {
   return (source: string): ParsedDocument => {
     const elements: ContentElement[] = [];
-    
-    const patterns = [
-      {
-        type: 'siglum' as const,
-        regex: /\$\$([\s\S]*?)\$\$/g,
-        parseMatch: (match: RegExpMatchArray) => ({
-          type: 'siglum' as const,
-          rawContent: match[1].trim(),
-        }),
-      },
-      {
-        type: 'katex' as const,
-        regex: /\$([^\$\n]+?)\$/g,
-        parseMatch: (match: RegExpMatchArray) => ({
-          type: 'katex' as const,
-          rawContent: match[1].trim(),
-        }),
-      },
-    ];
-
-    if (options?.customElements) {
-      for (const custom of options.customElements) {
-        patterns.push({
-          type: 'custom' as const,
-          regex: custom.pattern,
-          parseMatch: custom.parse,
-        });
-      }
-    }
 
     const tokenPositions: { start: number; end: number; element: ContentElement }[] = [];
 
-    for (const pattern of patterns) {
-      const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-      let match;
-      
-      while ((match = regex.exec(source)) !== null) {
-        const parsed = pattern.parseMatch(match);
-        
-        const element: ContentElement = {
+    const siglumRegex = /\{svg-latex\}([\s\S]*?)\{\/svg-latex\}/g;
+    let match;
+    while ((match = siglumRegex.exec(source)) !== null) {
+      tokenPositions.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        element: {
           id: generateId(),
-          type: parsed.type || pattern.type,
-          rawContent: parsed.rawContent || match[0],
+          type: 'siglum',
+          rawContent: match[1].trim(),
           renderBox: { ...defaultRenderBox },
-          metadata: parsed.metadata,
-        };
-        
-        tokenPositions.push({
-          start: match.index,
-          end: match.index + match[0].length,
-          element,
-        });
+        },
+      });
+    }
+
+    const katexDisplayRegex = /\$\$([^\$]+?)\$\$/g;
+    while ((match = katexDisplayRegex.exec(source)) !== null) {
+      tokenPositions.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        element: {
+          id: generateId(),
+          type: 'katex',
+          rawContent: match[1].trim(),
+          renderBox: { ...defaultRenderBox },
+          metadata: { displayMode: true },
+        },
+      });
+    }
+
+    const katexInlineRegex = /\$([^\$\n]+?)\$/g;
+    while ((match = katexInlineRegex.exec(source)) !== null) {
+      tokenPositions.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        element: {
+          id: generateId(),
+          type: 'katex',
+          rawContent: match[1].trim(),
+          renderBox: { ...defaultRenderBox },
+          metadata: { displayMode: false },
+        },
+      });
+    }
+
+    if (options?.customElements) {
+      for (const custom of options.customElements) {
+        const customRegex = new RegExp(custom.pattern.source, custom.pattern.flags);
+        while ((match = customRegex.exec(source)) !== null) {
+          const parsed = custom.parse(match);
+          tokenPositions.push({
+            start: match.index,
+            end: match.index + match[0].length,
+            element: {
+              id: generateId(),
+              type: 'custom',
+              rawContent: parsed.rawContent || match[0],
+              renderBox: { ...defaultRenderBox },
+              metadata: { ...parsed.metadata, customType: custom.type },
+            },
+          });
+        }
       }
     }
 

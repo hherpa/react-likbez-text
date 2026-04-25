@@ -93,6 +93,11 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
       });
       siglumRef.current.init(siglumConfig).catch(console.error);
     }
+
+    return () => {
+      siglumRef.current?.destroy();
+      siglumRef.current = null;
+    };
   }, [siglumConfig, defaultRenderBox]);
 
   useEffect(() => {
