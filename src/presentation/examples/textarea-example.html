@@ -17,6 +17,7 @@
     .preview-content { flex: 1; padding: 20px; overflow-y: auto; }
     .element-wrapper { margin-bottom: 16px; }
     .box-katex { padding: 12px; background: #f0f7ff; border: 1px solid #bbdefb; border-radius: 4px; text-align: center; }
+    .box-katex-display { padding: 16px; background: #f0f7ff; border: 1px solid #bbdefb; border-radius: 4px; text-align: center; overflow-x: auto; }
     .box-siglum { padding: 16px; background: #fff; border: 2px solid #2196F3; border-radius: 8px; }
     .markdown-content { line-height: 1.6; }
     .markdown-content h1 { font-size: 2em; margin: 0 0 0.5em 0; border-bottom: 1px solid #eee; }
@@ -54,100 +55,65 @@
   <script type="text/babel" data-presets="react">
     const { useState, useMemo, useEffect, useRef } = React;
 
-    // Domain
-    const createRenderBox = (overrides = {}) => ({
-      dimensions: { width: 'auto', height: 'auto' },
-      style: { padding: 8, borderRadius: 4 },
-      ...overrides,
-    });
-
     const generateId = () => `elem_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
-    // Parser - $$ for KaTeX display, $$$$ for Siglum full LaTeX
-    const createParser = () => (source) => {
+    const parseSource = (source) => {
       const elements = [];
-      const patterns = [
-        { type: 'siglum', regex: /\{siglum\}([\s\S]*?)\{\/siglum\}/g },
-        { type: 'katex', regex: /\$\$([^\$]+?)\$\$/g },
-        { type: 'katex', regex: /\$([^\$\n]+?)\$/g },
-      ];
-      const tokenPositions = [];
+      const siglumBlocks = [];
 
-      for (const pattern of patterns) {
-        const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-        let match;
-        while ((match = regex.exec(source)) !== null) {
-          tokenPositions.push({
-            start: match.index,
-            end: match.index + match[0].length,
-            element: { id: generateId(), type: pattern.type, rawContent: match[1].trim(), renderBox: createRenderBox() }
-          });
-        }
-      }
-
-      tokenPositions.sort((a, b) => a.start - b.start);
-      const used = new Array(source.length).fill(false);
-      for (const t of tokenPositions) {
-        for (let i = t.start; i < t.end; i++) { if (used[i]) { t.element = null; break; } }
-        if (t.element) for (let i = t.start; i < t.end; i++) used[i] = true;
-      }
-
-      const filtered = tokenPositions.filter(t => t.element);
+      const siglumRegex = /\{siglum\}([\s\S]*?)\{\/siglum\}/g;
       let lastEnd = 0;
-      for (const t of filtered) {
-        if (t.start > lastEnd) {
-          const text = source.slice(lastEnd, t.start).trim();
-          if (text) elements.push({ id: generateId(), type: 'markdown', rawContent: text, renderBox: createRenderBox() });
+      let siglumIdx = 0;
+
+      const replaced = source.replace(siglumRegex, (match, latex, offset) => {
+        if (offset > lastEnd) {
+          const text = source.slice(lastEnd, offset).trim();
+          if (text) elements.push({ id: generateId(), type: 'markdown', content: text });
         }
-        elements.push(t.element);
-        lastEnd = t.end;
-      }
+        const id = `siglum_${siglumIdx++}`;
+        siglumBlocks.push({ id, latex: latex.trim() });
+        elements.push({ id, type: 'siglum', latex: latex.trim() });
+        lastEnd = offset + match.length;
+      });
+
       if (lastEnd < source.length) {
         const text = source.slice(lastEnd).trim();
-        if (text) elements.push({ id: generateId(), type: 'markdown', rawContent: text, renderBox: createRenderBox() });
+        if (text) elements.push({ id: generateId(), type: 'markdown', content: text });
       }
-      return { elements };
+
+      return { elements, siglumBlocks };
     };
 
-    // Markdown Renderer
-    const createMarkdownRenderer = (defaultBox) => ({
-      render: (element) => {
-        let html = element.rawContent
-          .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-          .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-          .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\n/g, '<br>');
-        return { content: <div className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} /> };
-      }
-    });
-
-    // KaTeX Renderer
-    const createKaTeXRenderer = (defaultBox) => ({
-      render: (element, config = {}) => {
-        console.log('KaTeX render:', element.rawContent);
-        let html;
-        try {
-          if (typeof katex === 'undefined') {
-            return { content: <div className="box-katex" style={{color:'red'}}>KaTeX not loaded</div> };
+    const renderMarkdown = (text) => {
+      let html = text
+        .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+        .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+        .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        .replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
+          try {
+            const isDisplay = formula.includes('\\');
+            const html = katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
+            return `<div class="box-katex-display">${html}</div>`;
+          } catch (e) {
+            return `<span style="color:#cc0000">KaTeX Error: ${e.message}</span>`;
           }
-          html = katex.renderToString(element.rawContent, { 
-            displayMode: element.rawContent.includes('\\'), 
-            throwOnError: false, 
-            ...config 
-          });
-        } catch (e) { 
-          console.error('KaTeX error:', e);
-          html = `<span style="color:#cc0000">KaTeX Error: ${e.message}</span>`; 
-        }
-        return { content: <div className="box-katex" dangerouslySetInnerHTML={{ __html: html }} /> };
-      }
-    });
+        })
+        .replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
+          try {
+            const html = katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
+            return html;
+          } catch (e) {
+            return `<span style="color:#cc0000">KaTeX Error: ${e.message}</span>`;
+          }
+        })
+        .replace(/\n/g, '<br>');
+      return html;
+    };
 
-    // Siglum Renderer
-    const createSiglumRenderer = (defaultBox) => {
+    const createSiglumRenderer = () => {
       let compiler = null;
       let logs = [];
       return {
@@ -161,39 +127,32 @@
             onLog: (msg) => { logs.push(msg); console.log('[TeX]', msg); },
           });
           await compiler.init();
-          console.log('Siglum initialized');
+          console.log('Siglum ready');
         },
-        render: async (element) => {
-          logs = []; // Clear logs before each compile
+        render: async (latex) => {
+          logs = [];
           if (!compiler) return { content: <div className="loading">Initializing Siglum...</div> };
-          const latex = `\\documentclass{article}\\usepackage{amsmath}\\begin{document}${element.rawContent}\\end{document}`;
+          const fullLatex = `\\documentclass{article}\\usepackage{amsmath}\\begin{document}${latex}\\end{document}`;
           let result;
           try {
-            result = await compiler.compile(latex, { engine: 'pdflatex' });
+            result = await compiler.compile(fullLatex, { engine: 'pdflatex' });
           } catch (e) {
             return { content: <div className="box-siglum" style={{color:'#c62828'}}>Compilation error: {String(e)}</div> };
           }
-          
+
           if (!result) {
             return { content: <div className="box-siglum" style={{color:'#c62828'}}>No result from compiler</div> };
           }
-          
+
           if (result.success && result.pdf) {
-            // Copy from SharedArrayBuffer to regular ArrayBuffer
             const pdfBuffer = result.pdfIsShared ? new Uint8Array(result.pdf).slice() : new Uint8Array(result.pdf);
             const url = URL.createObjectURL(new Blob([pdfBuffer], { type: 'application/pdf' }));
-            return { content: (
-              <div className="box-siglum">
-                <div className="siglum-label">LaTeX (Siglum)</div>
-                <object data={url} type="application/pdf" width="100%" height="300px" />
-              </div>
-            )};
+            return { content: (<div className="box-siglum"><div className="siglum-label">LaTeX (Siglum)</div><object data={url} type="application/pdf" width="100%" height="300px" /></div>) };
           }
-          
-          // Show error logs from TeX
+
           const texErrors = logs.filter(l => l.includes('[TeX ERR]') || l.includes('! LaTeX Error') || l.includes('Error:'));
           const errorText = texErrors.length > 0 ? texErrors.join('\n') : 'Unknown error (check console for details)';
-          
+
           return { content: (
             <div className="box-siglum" style={{color:'#c62828', fontSize:'11px', maxHeight:'200px', overflow:'auto'}}>
               <strong>LaTeX Error:</strong>
@@ -204,41 +163,45 @@
       };
     };
 
-    // Main Component
-    const LikbezText = ({ source, katexConfig }) => {
+    const MarkdownElement = ({ content }) => {
+      const html = useMemo(() => renderMarkdown(content), [content]);
+      return <div className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} />;
+    };
+
+    const SiglumElement = ({ latex, renderer }) => {
+      const [content, setContent] = useState(null);
+      useEffect(() => {
+        renderer.render(latex).then(res => setContent(res.content));
+      }, [latex, renderer]);
+      return <div className="element-wrapper">{content || <div className="loading">Rendering LaTeX...</div>}</div>;
+    };
+
+    const LikbezText = ({ source }) => {
       const [siglumReady, setSiglumReady] = useState(false);
-      const [siglumResults, setSiglumResults] = useState({});
-      const siglumRef = useRef(null);
-      const defaultBox = createRenderBox();
-      const parserFn = useMemo(() => createParser(), []);
-      const parsed = useMemo(() => parserFn(source), [source, parserFn]);
+      const [siglumRenderer, setSiglumRenderer] = useState(null);
+      const { elements, siglumBlocks } = useMemo(() => parseSource(source), [source]);
 
       useEffect(() => {
-        siglumRef.current = createSiglumRenderer(defaultBox);
-        siglumRef.current.init().then(() => setSiglumReady(true)).catch(console.error);
+        const renderer = createSiglumRenderer();
+        setSiglumRenderer(renderer);
+        renderer.init().then(() => setSiglumReady(true)).catch(console.error);
       }, []);
 
-      useEffect(() => {
-        const render = async () => {
-          const els = parsed.elements.filter(e => e.type === 'siglum');
-          const results = {};
-          for (const el of els) if (siglumRef.current) results[el.id] = (await siglumRef.current.render(el)).content;
-          setSiglumResults(results);
-        };
-        if (siglumReady) render();
-      }, [parsed, siglumReady]);
-
-      const renderEl = (el) => {
-        switch (el.type) {
-          case 'markdown': return createMarkdownRenderer(defaultBox).render(el).content;
-          case 'katex': return createKaTeXRenderer(defaultBox).render(el, katexConfig).content;
-          case 'siglum': return siglumResults[el.id] || <div className="loading">Rendering LaTeX...</div>;
-          default: return <div>Unknown: {el.type}</div>;
-        }
-      };
-
       return (
-        <div>{parsed.elements.map(el => <div key={el.id} className="element-wrapper">{renderEl(el)}</div>)}</div>
+        <div>
+          {elements.map(el => {
+            if (el.type === 'markdown') {
+              return <MarkdownElement key={el.id} content={el.content} />;
+            }
+            if (el.type === 'siglum' && siglumReady && siglumRenderer) {
+              return <SiglumElement key={el.id} latex={el.latex} renderer={siglumRenderer} />;
+            }
+            if (el.type === 'siglum') {
+              return <div key={el.id} className="loading">Initializing Siglum...</div>;
+            }
+            return null;
+          })}
+        </div>
       );
     };
 
@@ -272,7 +235,7 @@ Display: $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$
           </div>
           <div className="preview-pane">
             <div className="editor-pane-header">Preview</div>
-            <div className="preview-content"><LikbezText source={source} katexConfig={{ displayMode: true }} /></div>
+            <div className="preview-content"><LikbezText source={source} /></div>
           </div>
         </div>
       );
