@@ -65,7 +65,7 @@
     const createParser = () => (source) => {
       const elements = [];
       const patterns = [
-        { type: 'siglum', regex: /\{svg-latex\}([\s\S]*?)\{\/svg-latex\}/g },
+        { type: 'siglum', regex: /\{siglum\}([\s\S]*?)\{\/siglum\}/g },
         { type: 'katex', regex: /\$\$([^\$]+?)\$\$/g },
         { type: 'katex', regex: /\$([^\$\n]+?)\$/g },
       ];
@@ -115,23 +115,50 @@
 
     const createSiglumRenderer = (defaultBox) => {
       let compiler = null;
+      let logs = [];
       return {
         init: async () => {
           if (typeof SiglumCompiler === 'undefined') { console.warn('Siglum not found'); return; }
-          compiler = new SiglumCompiler({ bundlesUrl: '/bundles', wasmUrl: '/busytex.wasm', workerUrl: '/worker.js' });
+          compiler = new SiglumCompiler({
+            bundlesUrl: '/bundles',
+            wasmUrl: '/busytex.wasm',
+            workerUrl: '/worker.js',
+            verbose: true,
+            onLog: (msg) => { logs.push(msg); console.log('[TeX]', msg); },
+          });
           await compiler.init();
           console.log('Siglum ready');
         },
         render: async (element) => {
+          logs = [];
           if (!compiler) return { content: <div className="loading">Initializing Siglum...</div> };
           const latex = `\\documentclass{article}\\usepackage{amsmath}\\begin{document}${element.rawContent}\\end{document}`;
-          const result = await compiler.compile(latex, { engine: 'pdflatex' });
+          let result;
+          try {
+            result = await compiler.compile(latex, { engine: 'pdflatex' });
+          } catch (e) {
+            return { content: <div className="box-siglum" style={{color:'#c62828'}}>Compilation error: {String(e)}</div> };
+          }
+
+          if (!result) {
+            return { content: <div className="box-siglum" style={{color:'#c62828'}}>No result from compiler</div> };
+          }
+
           if (result.success && result.pdf) { 
             const pdfBuffer = result.pdfIsShared ? new Uint8Array(result.pdf).slice() : new Uint8Array(result.pdf);
             const url = URL.createObjectURL(new Blob([pdfBuffer], { type: 'application/pdf' })); 
             return { content: (<div className="box-siglum"><div className="siglum-label">LaTeX (Siglum)</div><object data={url} type="application/pdf" width="100%" height="300px" /></div>)}; 
           }
-          return { content: <div className="box-siglum" style={{color:'#c62828'}}>Error: {result.error}</div> };
+
+          const texErrors = logs.filter(l => l.includes('[TeX ERR]') || l.includes('! LaTeX Error') || l.includes('Error:'));
+          const errorText = texErrors.length > 0 ? texErrors.join('\n') : 'Unknown error (check console for details)';
+
+          return { content: (
+            <div className="box-siglum" style={{color:'#c62828', fontSize:'11px', maxHeight:'200px', overflow:'auto'}}>
+              <strong>LaTeX Error:</strong>
+              <pre style={{whiteSpace:'pre-wrap', margin:'8px 0 0 0'}}>{errorText}</pre>
+            </div>
+          )};
         }
       };
     };
@@ -169,12 +196,12 @@ Display: $$\\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}$$
 
 ## LaTeX (Siglum)
 
-{svg-latex}
+{siglum}
 \\begin{align}
   f(x) &= \\int_{-\\infty}^{\\infty} \\hat{f}(\\xi)e^{2\\pi i \\xi x} d\\xi \\\\
-  \\mathcal{L}\\{f(t)\\} &= F(s) = \\int_0^{\\infty} e^{-st} f(t) dt
+  \\mathcal{L}\\lbrace f(t) \\rbrace &= F(s) = \\int_0^{\\infty} e^{-st} f(t) dt
 \\end{align}
-{/svg-latex}
+{/siglum}
 `;
 
     const App = () => {

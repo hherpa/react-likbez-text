@@ -67,7 +67,7 @@
     const createParser = () => (source) => {
       const elements = [];
       const patterns = [
-        { type: 'siglum', regex: /\{svg-latex\}([\s\S]*?)\{\/svg-latex\}/g },
+        { type: 'siglum', regex: /\{siglum\}([\s\S]*?)\{\/siglum\}/g },
         { type: 'katex', regex: /\$\$([^\$]+?)\$\$/g },
         { type: 'katex', regex: /\$([^\$\n]+?)\$/g },
       ];
@@ -255,11 +255,11 @@ Display: $$x = \\frac{-b \\pm \\sqrt{b^2-4ac}}{2a}$$
 
 ## LaTeX (Siglum)
 
-{svg-latex}
+{siglum}
 \\begin{align}
   \\int_{-\\infty}^{\\infty} e^{-x^2} dx &= \\sqrt{\\pi}
 \\end{align}
-{/svg-latex}
+{/siglum}
 `;
 
     const App = () => {
