@@ -19,7 +19,7 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
-  let filePath = path.join(__dirname, 'src', 'presentation', 'examples', req.url === '/' ? 'textarea-example.html' : req.url);
+  let filePath = path.join(__dirname, 'prototypes', req.url === '/' ? 'textarea-example.html' : req.url);
   
   if (!fs.existsSync(filePath)) {
     filePath = path.join(__dirname, 'public', req.url);
@@ -50,6 +50,7 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(PORT, () => {
-  console.log(`Server: http://localhost:${PORT}/textarea-example.html`);
-  console.log(`Server: http://localhost:${PORT}/codemirror-example.html`);
+  console.log(`Server running at http://localhost:${PORT}/`);
+  console.log(`- Textarea: http://localhost:${PORT}/textarea-example.html`);
+  console.log(`- CodeMirror: http://localhost:${PORT}/codemirror-example.html`);
 });

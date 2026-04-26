@@ -2,9 +2,9 @@
   "name": "likbez-text-examples",
   "version": "1.0.0",
   "scripts": {
-    "start:textarea": "npx serve src/presentation/examples/textarea-example.html",
-    "start:codemirror": "npx serve src/presentation/examples/codemirror-example.html",
-    "start:all": "npx serve src/presentation/examples/"
+    "start:textarea": "npx serve prototypes/textarea-example.html",
+    "start:codemirror": "npx serve prototypes/codemirror-example.html",
+    "start:all": "npx serve prototypes/"
   },
   "devDependencies": {
     "@types/katex": "^0.16.8",
