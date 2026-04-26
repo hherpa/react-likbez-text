@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ContentElement, ParsedDocument, RenderBox } from '../../domain/entities/Document';
 import { ParserOptions } from '../../domain/interfaces/IParser';
 import { createParser, createKaTeXRenderer, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from '../../infrastructure';
@@ -55,8 +55,11 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
   className,
 }) => {
   const [siglumReady, setSiglumReady] = useState(false);
-  const [siglumRenderer, setSiglumRenderer] = useState<ReturnType<typeof createSiglumRenderer> | null>(null);
-  const [siglumResults, setSiglumResults] = useState<Record<string, React.ReactNode>>({});
+  const siglumRendererRef = useRef<ReturnType<typeof createSiglumRenderer> | null>(null);
+  const siglumResultsRef = useRef<Record<string, React.ReactNode>>({});
+  const [siglumResultsMap, setSiglumResultsMap] = useState<Record<string, React.ReactNode>>({});
+  const siglumIdsRef = useRef<Set<string>>(new Set());
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const renderBox = useMemo(() => defaultBox || defaultRenderBox, [defaultBox]);
   const parserFn = useMemo(() => createParser({ ...parserOptions, customElements }), [parserOptions, customElements]);
@@ -73,31 +76,45 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
   useEffect(() => {
     if (siglumConfig?.autoInit !== false) {
       const renderer = createSiglumRenderer(renderBox, () => setSiglumReady(true));
-      setSiglumRenderer(renderer);
+      siglumRendererRef.current = renderer;
       renderer.init(siglumConfig).catch(console.error);
     }
     return () => {
-      siglumRenderer?.destroy();
+      siglumRendererRef.current?.destroy();
+      siglumRendererRef.current = null;
     };
   }, []);
 
   useEffect(() => {
-    if (!siglumReady || !siglumRenderer) return;
+    if (!siglumReady || !siglumRendererRef.current) return;
+
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    const renderer = siglumRendererRef.current;
+    const currentResults: Record<string, React.ReactNode> = {};
+    const currentIds = new Set<string>();
 
     const renderSiglumElements = async () => {
       const siglumElements = parsedDocument.elements.filter((e: ContentElement) => e.type === 'siglum');
-      const results: Record<string, React.ReactNode> = {};
 
       for (const element of siglumElements) {
-        const output = await siglumRenderer.render(element, siglumConfig);
-        results[element.id] = output.content;
+        if (abortControllerRef.current?.signal.aborted) return;
+        currentIds.add(element.id);
+        const output = await renderer.render(element, siglumConfig);
+        if (abortControllerRef.current?.signal.aborted) return;
+        currentResults[element.id] = output.content;
       }
 
-      setSiglumResults(results);
+      siglumResultsRef.current = currentResults;
+      siglumIdsRef.current = currentIds;
+      setSiglumResultsMap({ ...currentResults });
     };
 
     renderSiglumElements();
-  }, [parsedDocument, siglumReady, siglumRenderer, siglumConfig]);
+  }, [parsedDocument.elements, siglumReady, siglumConfig]);
 
   const renderElement = useCallback((element: ContentElement): React.ReactNode => {
     const box = element.renderBox || renderBox;
@@ -112,7 +129,7 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
         return katexRenderer.render(element, katexConfig).content;
       }
       case 'siglum': {
-        return siglumResults[element.id] || (
+        return siglumResultsMap[element.id] || (
           <div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>
             Loading Siglum...
           </div>
@@ -125,7 +142,7 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
       default:
         return <div>Unknown type: {element.type}</div>;
     }
-  }, [renderBox, katexConfig, siglumResults, customElements]);
+  }, [renderBox, katexConfig, siglumResultsMap, customElements]);
 
   return (
     <div className={className} style={{ display: 'flex', flexDirection: 'column', gap: 16, ...style }}>

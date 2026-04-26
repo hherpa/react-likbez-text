@@ -34,7 +34,7 @@ const createParser: ParserFactory = (options?: ParserOptions) => {
       });
     }
 
-    const katexDisplayRegex = /\$\$([^\$]+?)\$\$/g;
+    const katexDisplayRegex = /\$\$((?:[^\$]|\\\$)+?)\$\$/g;
     while ((match = katexDisplayRegex.exec(source)) !== null) {
       tokenPositions.push({
         start: match.index,
@@ -49,7 +49,7 @@ const createParser: ParserFactory = (options?: ParserOptions) => {
       });
     }
 
-    const katexInlineRegex = /\$([^\$\n]+?)\$/g;
+    const katexInlineRegex = /\$((?:[^\$\n]|\\\$)+?)\$/g;
     while ((match = katexInlineRegex.exec(source)) !== null) {
       tokenPositions.push({
         start: match.index,

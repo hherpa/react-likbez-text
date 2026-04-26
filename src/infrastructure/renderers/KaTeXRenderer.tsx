@@ -29,9 +29,7 @@ export const createKaTeXRenderer = (defaultBox: RenderBox): KaTeXRenderer => {
       }
 
       let html: string;
-      const displayMode = element.metadata?.displayMode === true 
-        || element.rawContent.includes('\\') 
-        || element.rawContent.includes('\\begin');
+      const displayMode = element.metadata?.displayMode === true;
 
       try {
         html = katex.renderToString(element.rawContent, {
