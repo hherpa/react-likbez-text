@@ -7,13 +7,13 @@ const PORT = 3001;
 const mimeTypes = {
   '.html': 'text/html',
   '.js': 'application/javascript',
+  '.ts': 'application/typescript',
   '.css': 'text/css',
   '.wasm': 'application/wasm',
   '.json': 'application/json',
 };
 
 const server = http.createServer((req, res) => {
-  // Required headers for Siglum (SharedArrayBuffer)
   res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
   res.setHeader('Cross-Origin-Embedder-Policy', 'require-corp');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -25,7 +25,6 @@ const server = http.createServer((req, res) => {
     filePath = path.join(__dirname, 'public', req.url);
   }
   
-  // Serve node_modules for siglum
   if (!fs.existsSync(filePath) && req.url.startsWith('/node_modules/')) {
     filePath = path.join(__dirname, req.url);
   }
