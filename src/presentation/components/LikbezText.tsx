@@ -1,37 +1,26 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { 
-  ContentElement, 
-  ParsedDocument, 
-  RenderBox,
-} from '../../domain/entities/Document';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { ContentElement, ParsedDocument, RenderBox } from '../../domain/entities/Document';
 import { ParserOptions } from '../../domain/interfaces/IParser';
-import { RendererConfig, CustomElementConfig } from '../../domain/interfaces/IRenderer';
 import { createParser, createKaTeXRenderer, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from '../../infrastructure';
 
 export interface LikbezTextProps {
   source: string;
-  onSourceChange?: (source: string) => void;
   
-  parser?: (source: string) => ParsedDocument;
   parserOptions?: ParserOptions;
-  
-  rendererConfig?: RendererConfig;
   
   defaultBox?: RenderBox;
   customBoxes?: Record<string, RenderBox>;
   
-  customRenderers?: {
-    markdown?: (element: ContentElement) => React.ReactNode;
-    katex?: (element: ContentElement) => React.ReactNode;
-    siglum?: (element: ContentElement) => React.ReactNode;
-    custom?: (element: ContentElement, config: CustomElementConfig) => React.ReactNode;
-  };
-  
-  customElements?: CustomElementConfig[];
+  customElements?: Array<{
+    type: string;
+    pattern: RegExp;
+    parse: (match: RegExpMatchArray) => Partial<ContentElement>;
+  }>;
   
   siglumConfig?: {
     bundlesUrl?: string;
     wasmUrl?: string;
+    workerUrl?: string;
     ctanProxyUrl?: string;
     onLog?: (msg: string) => void;
     onProgress?: (stage: string, detail: any) => void;
@@ -43,39 +32,34 @@ export interface LikbezTextProps {
     throwOnError?: boolean;
     errorColor?: string;
     macros?: Record<string, string>;
-    strict?: boolean | string | Function;
-    trust?: boolean | Function;
   };
   
   style?: React.CSSProperties;
   className?: string;
 }
 
+const defaultRenderBox: RenderBox = {
+  dimensions: { width: 'auto', height: 'auto' },
+  style: { padding: 8, borderRadius: 4 },
+};
+
 export const LikbezText: React.FC<LikbezTextProps> = ({
   source,
-  onSourceChange,
-  parser,
   parserOptions,
-  rendererConfig,
   defaultBox,
   customBoxes,
-  customRenderers,
   customElements = [],
   siglumConfig,
   katexConfig,
   style,
   className,
 }) => {
-  const siglumRef = useRef<ReturnType<typeof createSiglumRenderer> | null>(null);
   const [siglumReady, setSiglumReady] = useState(false);
+  const [siglumRenderer, setSiglumRenderer] = useState<ReturnType<typeof createSiglumRenderer> | null>(null);
   const [siglumResults, setSiglumResults] = useState<Record<string, React.ReactNode>>({});
 
-  const defaultRenderBox = useMemo<RenderBox>(() => defaultBox || {
-    dimensions: { width: 'auto', height: 'auto' },
-    style: { padding: 8, borderRadius: 4 },
-  }, [defaultBox]);
-
-  const parserFn = useMemo(() => parser || createParser({ customElements }), [parser, customElements]);
+  const renderBox = useMemo(() => defaultBox || defaultRenderBox, [defaultBox]);
+  const parserFn = useMemo(() => createParser({ ...parserOptions, customElements }), [parserOptions, customElements]);
 
   const parsedDocument = useMemo<ParsedDocument>(() => {
     try {
@@ -88,130 +72,68 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
 
   useEffect(() => {
     if (siglumConfig?.autoInit !== false) {
-      siglumRef.current = createSiglumRenderer(defaultRenderBox, () => {
-        setSiglumReady(true);
-      });
-      siglumRef.current.init(siglumConfig).catch(console.error);
+      const renderer = createSiglumRenderer(renderBox, () => setSiglumReady(true));
+      setSiglumRenderer(renderer);
+      renderer.init(siglumConfig).catch(console.error);
     }
-
     return () => {
-      siglumRef.current?.destroy();
-      siglumRef.current = null;
+      siglumRenderer?.destroy();
     };
-  }, [siglumConfig, defaultRenderBox]);
+  }, []);
 
   useEffect(() => {
+    if (!siglumReady || !siglumRenderer) return;
+
     const renderSiglumElements = async () => {
       const siglumElements = parsedDocument.elements.filter((e: ContentElement) => e.type === 'siglum');
       const results: Record<string, React.ReactNode> = {};
 
       for (const element of siglumElements) {
-        if (siglumRef.current && siglumReady) {
-          const output = await siglumRef.current.render(element, {
-            engine: rendererConfig?.siglum?.engine,
-            bundlesUrl: siglumConfig?.bundlesUrl,
-            wasmUrl: siglumConfig?.wasmUrl,
-          });
-          results[element.id] = output.content;
-        } else {
-          results[element.id] = (
-            <div style={{ 
-              padding: 16, 
-              backgroundColor: '#f5f5f5', 
-              border: '1px dashed #ccc',
-              color: '#666',
-            }}>
-              Loading Siglum...
-            </div>
-          );
-        }
+        const output = await siglumRenderer.render(element, siglumConfig);
+        results[element.id] = output.content;
       }
 
       setSiglumResults(results);
     };
 
     renderSiglumElements();
-  }, [parsedDocument, siglumReady, siglumConfig, rendererConfig?.siglum]);
-
-  const getElementBox = useCallback((element: ContentElement): RenderBox => {
-    const customType = element.metadata?.customType as string;
-    if (customType && customBoxes?.[customType]) {
-      return customBoxes[customType];
-    }
-    return element.renderBox || defaultRenderBox;
-  }, [customBoxes, defaultRenderBox]);
+  }, [parsedDocument, siglumReady, siglumRenderer, siglumConfig]);
 
   const renderElement = useCallback((element: ContentElement): React.ReactNode => {
-    const box = getElementBox(element);
-
-    if (customRenderers?.markdown && element.type === 'markdown') {
-      return customRenderers.markdown(element);
-    }
-    if (customRenderers?.katex && element.type === 'katex') {
-      return customRenderers.katex(element);
-    }
-    if (customRenderers?.siglum && element.type === 'siglum') {
-      return customRenderers.siglum(element);
-    }
-    if (customRenderers?.custom && element.type === 'custom') {
-      return customRenderers.custom(element, customElements.find(c => c.type === element.metadata?.customType)!);
-    }
+    const box = element.renderBox || renderBox;
 
     switch (element.type) {
       case 'markdown': {
-        const mdRenderer = createMarkdownRenderer(defaultRenderBox);
-        const output = mdRenderer.render(element, rendererConfig?.markdown);
-        return output.content;
+        const mdRenderer = createMarkdownRenderer(renderBox);
+        return mdRenderer.render(element).content;
       }
       case 'katex': {
-        const katexRenderer = createKaTeXRenderer(defaultRenderBox);
-        const output = katexRenderer.render(element, katexConfig);
-        return output.content;
+        const katexRenderer = createKaTeXRenderer(renderBox);
+        return katexRenderer.render(element, katexConfig).content;
       }
       case 'siglum': {
         return siglumResults[element.id] || (
-          <div style={{ 
-            padding: 16, 
-            backgroundColor: '#f5f5f5', 
-            border: '1px dashed #ccc',
-            color: '#666',
-          }}>
+          <div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>
             Loading Siglum...
           </div>
         );
       }
       case 'custom': {
-        const customRenderer = createCustomRenderer(defaultRenderBox);
-        const output = customRenderer.render(element, customElements);
-        return output.content;
+        const customRenderer = createCustomRenderer(renderBox);
+        return customRenderer.render(element, customElements).content;
       }
       default:
         return <div>Unknown type: {element.type}</div>;
     }
-  }, [customRenderers, customElements, defaultRenderBox, katexConfig, rendererConfig, siglumResults, getElementBox]);
+  }, [renderBox, katexConfig, siglumResults, customElements]);
 
   return (
-    <div 
-      className={className}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 16,
-        ...style,
-      }}
-    >
-      <div className="likbez-text-content">
-        {parsedDocument.elements.map((element: ContentElement) => (
-          <div
-            key={element.id}
-            style={{
-              marginBottom: 8,
-            }}
-          >
-            {renderElement(element)}
-          </div>
-        ))}
-      </div>
+    <div className={className} style={{ display: 'flex', flexDirection: 'column', gap: 16, ...style }}>
+      {parsedDocument.elements.map((element: ContentElement) => (
+        <div key={element.id} style={{ marginBottom: 8 }}>
+          {renderElement(element)}
+        </div>
+      ))}
     </div>
   );
 };

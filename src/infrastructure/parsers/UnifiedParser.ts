@@ -19,7 +19,7 @@ const createParser: ParserFactory = (options?: ParserOptions) => {
 
     const tokenPositions: { start: number; end: number; element: ContentElement }[] = [];
 
-    const siglumRegex = /\{svg-latex\}([\s\S]*?)\{\/svg-latex\}/g;
+    const siglumRegex = /\{siglum\}([\s\S]*?)\{\/siglum\}/g;
     let match;
     while ((match = siglumRegex.exec(source)) !== null) {
       tokenPositions.push({
