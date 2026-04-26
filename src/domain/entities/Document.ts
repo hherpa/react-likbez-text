@@ -21,7 +21,7 @@ export interface RenderBox {
   style?: BoxStyle;
 }
 
-export type ContentType = 'markdown' | 'katex' | 'siglum' | 'custom';
+export type ContentType = 'markdown-katex' | 'siglum' | 'custom';
 
 export interface ContentElement {
   id: string;

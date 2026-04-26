@@ -9,6 +9,7 @@ export interface CustomElementConfig {
   type: string;
   pattern: RegExp;
   parse: (match: RegExpMatchArray) => Partial<ContentElement>;
+  render?: (element: ContentElement) => React.ReactNode;
 }
 
 export interface MarkdownRendererConfig {

@@ -34,36 +34,6 @@ const createParser: ParserFactory = (options?: ParserOptions) => {
       });
     }
 
-    const katexDisplayRegex = /\$\$((?:[^\$]|\\\$)+?)\$\$/g;
-    while ((match = katexDisplayRegex.exec(source)) !== null) {
-      tokenPositions.push({
-        start: match.index,
-        end: match.index + match[0].length,
-        element: {
-          id: generateId(),
-          type: 'katex',
-          rawContent: match[1].trim(),
-          renderBox: { ...defaultRenderBox },
-          metadata: { displayMode: true },
-        },
-      });
-    }
-
-    const katexInlineRegex = /\$((?:[^\$\n]|\\\$)+?)\$/g;
-    while ((match = katexInlineRegex.exec(source)) !== null) {
-      tokenPositions.push({
-        start: match.index,
-        end: match.index + match[0].length,
-        element: {
-          id: generateId(),
-          type: 'katex',
-          rawContent: match[1].trim(),
-          renderBox: { ...defaultRenderBox },
-          metadata: { displayMode: false },
-        },
-      });
-    }
-
     if (options?.customElements) {
       for (const custom of options.customElements) {
         const customRegex = new RegExp(custom.pattern.source, custom.pattern.flags);
@@ -112,7 +82,7 @@ const createParser: ParserFactory = (options?: ParserOptions) => {
         if (textContent) {
           elements.push({
             id: generateId(),
-            type: 'markdown',
+            type: 'markdown-katex',
             rawContent: textContent,
             renderBox: { ...defaultRenderBox },
           });
@@ -128,7 +98,7 @@ const createParser: ParserFactory = (options?: ParserOptions) => {
       if (remainingText) {
         elements.push({
           id: generateId(),
-          type: 'markdown',
+          type: 'markdown-katex',
           rawContent: remainingText,
           renderBox: { ...defaultRenderBox },
         });

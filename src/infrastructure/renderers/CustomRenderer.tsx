@@ -12,7 +12,7 @@ export const createCustomRenderer = (defaultBox: RenderBox): CustomRenderer => {
       const config = customConfigs.find(c => c.type === element.metadata?.customType);
       const renderBox = element.renderBox || defaultBox;
 
-      if (!config) {
+      if (!config || !config.render) {
         return {
           elementId: element.id,
           type: element.type,
@@ -47,7 +47,7 @@ export const createCustomRenderer = (defaultBox: RenderBox): CustomRenderer => {
               overflow: 'auto',
             }}
           >
-            {element.metadata?.renderedContent as React.ReactNode}
+            {config.render(element)}
           </div>
         ),
       };

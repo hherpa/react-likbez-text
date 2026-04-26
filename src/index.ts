@@ -8,3 +8,4 @@ export * from './infrastructure/renderers/MarkdownRenderer';
 export * from './infrastructure/renderers/CustomRenderer';
 export { LikbezText } from './presentation/components/LikbezText';
 export { useLikbezText } from './presentation/hooks/useLikbezText';
+export { default as styles } from './styles.css';

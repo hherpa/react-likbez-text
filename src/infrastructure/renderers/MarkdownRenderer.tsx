@@ -61,6 +61,7 @@ export const createMarkdownRenderer = (defaultBox: RenderBox): MarkdownRenderer 
         box: renderBox,
         content: (
           <div
+            className="likbez-markdown-katex"
             style={{
               ...renderBox.style,
               width: renderBox.dimensions.width,
@@ -73,7 +74,6 @@ export const createMarkdownRenderer = (defaultBox: RenderBox): MarkdownRenderer 
             }}
           >
             <div 
-              className="markdown-content"
               dangerouslySetInnerHTML={{ __html: html }}
             />
           </div>

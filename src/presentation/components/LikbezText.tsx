@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ContentElement, ParsedDocument, RenderBox } from '../../domain/entities/Document';
 import { ParserOptions } from '../../domain/interfaces/IParser';
-import { createParser, createKaTeXRenderer, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from '../../infrastructure';
+import { createParser, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from '../../infrastructure';
 
 export interface LikbezTextProps {
   source: string;
@@ -120,13 +120,9 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
     const box = element.renderBox || renderBox;
 
     switch (element.type) {
-      case 'markdown': {
+      case 'markdown-katex': {
         const mdRenderer = createMarkdownRenderer(renderBox);
-        return mdRenderer.render(element).content;
-      }
-      case 'katex': {
-        const katexRenderer = createKaTeXRenderer(renderBox);
-        return katexRenderer.render(element, katexConfig).content;
+        return mdRenderer.render(element, { remarkPlugins: [], rehypePlugins: [] }).content;
       }
       case 'siglum': {
         return siglumResultsMap[element.id] || (
@@ -142,10 +138,10 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
       default:
         return <div>Unknown type: {element.type}</div>;
     }
-  }, [renderBox, katexConfig, siglumResultsMap, customElements]);
+  }, [renderBox, customElements, siglumResultsMap]);
 
   return (
-    <div className={className} style={{ display: 'flex', flexDirection: 'column', gap: 16, ...style }}>
+    <div className={`likbez-text ${className || ''}`} style={style}>
       {parsedDocument.elements.map((element: ContentElement) => (
         <div key={element.id} style={{ marginBottom: 8 }}>
           {renderElement(element)}

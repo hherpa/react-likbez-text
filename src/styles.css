@@ -1,0 +1,104 @@
+.likbez-text {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.likbez-markdown-katex {
+  line-height: 1.6;
+}
+
+.likbez-markdown h1 {
+  font-size: 2em;
+  margin: 0 0 0.5em 0;
+  border-bottom: 1px solid #eee;
+}
+
+.likbez-markdown h2 {
+  font-size: 1.5em;
+  margin: 1em 0 0.5em 0;
+}
+
+.likbez-markdown h3 {
+  font-size: 1.2em;
+  margin: 1em 0 0.5em 0;
+}
+
+.likbez-markdown p {
+  margin: 0 0 1em 0;
+}
+
+.likbez-markdown code {
+  background: #f4f4f4;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 0.9em;
+  color: #c62828;
+}
+
+.likbez-markdown pre {
+  background: #263238;
+  padding: 16px;
+  border-radius: 6px;
+  color: #e0e0e0;
+  overflow-x: auto;
+}
+
+.likbez-markdown strong {
+  color: #212121;
+  font-weight: 600;
+}
+
+.likbez-markdown ul,
+.likbez-markdown ol {
+  margin: 0 0 1em 0;
+  padding-left: 2em;
+}
+
+.likbez-markdown li {
+  margin-bottom: 0.5em;
+}
+
+.likbez-markdown blockquote {
+  margin: 1em 0;
+  padding-left: 1em;
+  border-left: 4px solid #ddd;
+  color: #666;
+}
+
+.likbez-katex {
+  padding: 12px;
+  background: #f0f7ff;
+  border: 1px solid #bbdefb;
+  border-radius: 4px;
+}
+
+.likbez-katex-display {
+  padding: 16px;
+  background: #f0f7ff;
+  border: 1px solid #bbdefb;
+  border-radius: 4px;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.likbez-siglum {
+  padding: 16px;
+  background: #fff;
+  border: 2px solid #2196F3;
+  border-radius: 8px;
+}
+
+.likbez-loading {
+  padding: 16px;
+  background: #f5f5f5;
+  border: 1px dashed #ccc;
+  color: #666;
+}
+
+.likbez-error {
+  padding: 16px;
+  background: #ffebee;
+  border: 1px solid #ffcdd2;
+  color: #c62828;
+}
