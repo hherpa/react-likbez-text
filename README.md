@@ -172,8 +172,8 @@ tar -xzf siglum-bundles-v0.1.0.tar.gz -C ./public/
 Исходный текст проходит через приоритетный парсер:
 
 1. **{siglum}...{/siglum}** → тип `siglum` (полноценный LaTeX)
-2. **$$...$$** → тип `katex` (блочная формула)
-3. **$...$** → тип `katex` (inline формула)
+2. **$$** → тип `katex` (блочная формула)
+3. **$** → тип `katex` (inline формула)
 4. **customElements** → тип `custom` (пользовательские блоки)
 5. **всё остальное** → тип `markdown`
 
@@ -217,12 +217,6 @@ Cross-Origin-Embedder-Policy: require-corp
 Access-Control-Allow-Origin: *
 Cross-Origin-Resource-Policy: cross-origin
 ```
-
-## Примеры
-
-См. `prototypes/`:
-- `textarea-example.html` — простой редактор
-- `codemirror-example.html` — редактор с подсветкой синтаксиса
 
 ## Структура проекта
 
