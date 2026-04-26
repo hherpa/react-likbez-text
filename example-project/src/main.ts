@@ -22,12 +22,14 @@ function startDevServer(): Promise<void> {
 
       if (url.startsWith('/node_modules/')) {
         filePath = path.join(ROOT_DIR, '..', url);
-      } else if (url.startsWith('/bundles/') || url.startsWith('/workers/')) {
-        filePath = path.join(ROOT_DIR, '..', url);
+      } else if (url.startsWith('/bundles/')) {
+        filePath = path.join(ROOT_DIR, '..', 'public', 'bundles', url.slice(9));
+      } else if (url === '/busytex.wasm' || url === '/worker.js') {
+        filePath = path.join(ROOT_DIR, '..', 'public', url);
       } else if (url === '/' || url === '/index.html' || url === '') {
         filePath = path.join(ROOT_DIR, 'index.html');
       } else {
-        filePath = path.join(ROOT_DIR, url);
+        filePath = path.join(ROOT_DIR, '..', 'public', url);
       }
 
       if (!fs.existsSync(filePath)) {

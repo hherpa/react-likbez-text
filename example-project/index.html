@@ -122,6 +122,7 @@
       let initialized = false;
       const logs = [];
       const blobUrls = new Set();
+      let pendingRender = null;
 
       return {
         init: async (config) => {
@@ -153,13 +154,21 @@
             return { content: <div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>Initializing Siglum...</div> };
           }
 
+          if (pendingRender) {
+            await pendingRender;
+          }
+
           logs.length = 0;
           const fullLatex = `\\documentclass{article}\\usepackage{amsmath}\\begin{document}${latex}\\end{document}`;
 
           let result;
           try {
-            result = await compiler.compile(fullLatex, { engine: 'pdflatex' });
+            const renderPromise = compiler.compile(fullLatex, { engine: 'pdflatex' });
+            pendingRender = renderPromise;
+            result = await renderPromise;
+            pendingRender = null;
           } catch (e) {
+            pendingRender = null;
             return { content: <div style={{ padding: 16, backgroundColor: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828' }}>Compilation error: {String(e)}</div> };
           }
 
@@ -217,15 +226,23 @@
     };
 
     const SiglumElement = ({ latex, renderer }) => {
-      const [content, setContent] = useState(<div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>Rendering LaTeX...</div>);
+      const [content, setContent] = useState(<div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>Rendering LaTeX... ({latex.substring(0, 20)}...)</div>);
       const renderCalled = useRef(false);
 
       useEffect(() => {
         renderCalled.current = false;
+        console.log('[SiglumElement] Rendering:', latex);
         renderer.render(latex).then(res => {
+          console.log('[SiglumElement] Result:', res, 'content props:', res.content?.props);
           if (!renderCalled.current) {
             renderCalled.current = true;
             setContent(res.content);
+          }
+        }).catch(err => {
+          console.error('[SiglumElement] Error:', err);
+          if (!renderCalled.current) {
+            renderCalled.current = true;
+            setContent(<div style={{ padding: 16, backgroundColor: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828' }}>Error: {String(err)}</div>);
           }
         });
       }, [latex, renderer]);
@@ -283,7 +300,9 @@ Display: $$\\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}$$
 ## Example with Complex Formula
 
 {siglum}
+\\begin{align}
 \\frac{d}{dx}\\left( e^{x^2} \\right) = e^{x^2} \\cdot 2x
+\\end{align}
 {/siglum}
 `;
 
