@@ -28,7 +28,7 @@
     .markdown-content ul, .markdown-content ol { margin: 0 0 1em 0; padding-left: 2em; }
     .markdown-content li { margin-bottom: 0.5em; }
     .markdown-content blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid #ddd; color: #666; }
-    .katex-display { padding: 16px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 4px; text-align: center; overflow-x: auto; }
+    .katex-display { margin: 0; padding: 12px 16px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 4px; text-align: center; overflow-x: auto; }
   </style>
 </head>
 <body>
@@ -99,8 +99,7 @@
         .replace(/`([^`]+)`/g, '<code>$1</code>')
         .replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
           try {
-            const katexHtml = katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
-            return `<div class="katex-display">${katexHtml}</div>`;
+            return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
           } catch (e) {
             return `<span style="color:#cc0000">KaTeX Error: ${e}</span>`;
           }
