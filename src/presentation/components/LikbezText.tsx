@@ -3,6 +3,8 @@ import { ContentElement, ParsedDocument, RenderBox } from '../../domain/entities
 import { ParserOptions } from '../../domain/interfaces/IParser';
 import { createParser, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from '../../infrastructure';
 
+const EMPTY_CUSTOM_ELEMENTS: ParserOptions['customElements'] = [];
+
 export interface LikbezTextProps {
   source: string;
   
@@ -48,7 +50,7 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
   parserOptions,
   defaultBox,
   customBoxes,
-  customElements = [],
+  customElements = EMPTY_CUSTOM_ELEMENTS,
   siglumConfig,
   katexConfig,
   style,
@@ -73,11 +75,18 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
     }
   }, [source, parserFn]);
 
+  console.log('[LIKBEZ] source length:', source?.length, 'elements:', parsedDocument?.elements?.length);
+
   useEffect(() => {
     if (siglumConfig?.autoInit !== false) {
-      const renderer = createSiglumRenderer(renderBox, () => setSiglumReady(true));
+      const renderer = createSiglumRenderer(renderBox);
       siglumRendererRef.current = renderer;
-      renderer.init(siglumConfig).catch(console.error);
+      renderer.init(siglumConfig).then(() => {
+        console.log('[LIKBEZ] siglum init resolved');
+        setSiglumReady(true);
+      }).catch((e) => {
+        console.error('[LIKBEZ] siglum init error:', e);
+      });
     }
     return () => {
       siglumRendererRef.current?.destroy();
@@ -86,6 +95,7 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
   }, []);
 
   useEffect(() => {
+    console.log('[LIKBEZ] siglum effect: siglumReady=', siglumReady, 'rendererRef=', !!siglumRendererRef.current);
     if (!siglumReady || !siglumRendererRef.current) return;
 
     if (abortControllerRef.current) {
@@ -110,22 +120,56 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
 
       siglumResultsRef.current = currentResults;
       siglumIdsRef.current = currentIds;
+      console.log('[LIKBEZ] siglum results:', Object.keys(currentResults).map(k => ({ id: k, type: typeof currentResults[k], isElement: React.isValidElement(currentResults[k]) })));
       setSiglumResultsMap({ ...currentResults });
+      setTimeout(() => {
+        const objectTag = document.querySelector('.likbez-text object') as HTMLObjectElement;
+        if (objectTag) {
+          console.log('[LIKBEZ] object offsetWidth:', objectTag.offsetWidth, 'offsetHeight:', objectTag.offsetHeight);
+          console.log('[LIKBEZ] object style:', objectTag.getAttribute('style'));
+          const dataUrl = objectTag.getAttribute('data');
+          if (dataUrl && dataUrl.startsWith('blob:')) {
+            fetch(dataUrl).then(r => r.blob()).then(blob => {
+              console.log('[LIKBEZ] PDF blob size:', blob.size, 'bytes, type:', blob.type);
+            }).catch(e => console.error('[LIKBEZ] blob fetch error:', e));
+          }
+          objectTag.onload = () => console.log('[LIKBEZ] object loaded successfully');
+          objectTag.onerror = (e) => console.error('[LIKBEZ] object error:', e);
+        }
+      }, 1500);
     };
 
     renderSiglumElements();
-  }, [parsedDocument.elements, siglumReady, siglumConfig]);
+  }, [source, siglumReady, siglumConfig]);
 
   const renderElement = useCallback((element: ContentElement): React.ReactNode => {
     const box = element.renderBox || renderBox;
 
+    console.log('[LIKBEZ] renderElement:', element.type, element.id);
+
     switch (element.type) {
       case 'markdown-katex': {
         const mdRenderer = createMarkdownRenderer(renderBox);
-        return mdRenderer.render(element, { remarkPlugins: [], rehypePlugins: [] }).content;
+        const result = mdRenderer.render(element, { remarkPlugins: [], rehypePlugins: [] });
+        console.log('[LIKBEZ] markdown result:', typeof result.content);
+        return result.content;
       }
       case 'siglum': {
-        return siglumResultsMap[element.id] || (
+        const siglumResult = siglumResultsMap[element.id];
+        if (siglumResult && React.isValidElement(siglumResult)) {
+          const props = siglumResult.props;
+          const childCount = React.Children.count(siglumResult);
+          console.log('[LIKBEZ] siglum element: type=', String(siglumResult.type), 'childCount=', childCount, 'propsKeys=', Object.keys(props || {}));
+          if (props.children) {
+            console.log('[LIKBEZ] siglum children type:', typeof props.children, React.isValidElement(props.children) ? 'React element' : 'not element');
+            if (React.isValidElement(props.children)) {
+              console.log('[LIKBEZ] siglum child type:', String(props.children.type), 'props:', JSON.stringify(props.children.props, (k, v) => typeof v === 'function' ? '[fn]' : typeof v === 'object' && v !== null ? '[obj]' : v));
+            }
+          }
+        } else {
+          console.log('[LIKBEZ] siglum no result yet');
+        }
+        return siglumResult || (
           <div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>
             Loading Siglum...
           </div>

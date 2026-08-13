@@ -2,14 +2,17 @@
   "name": "likbez-text-examples",
   "version": "1.0.0",
   "scripts": {
+    "build:browser": "node build-browser.js",
     "start:textarea": "npx serve prototypes/textarea-example.html",
     "start:codemirror": "npx serve prototypes/codemirror-example.html",
-    "start:all": "npx serve prototypes/"
+    "start:all": "npx serve prototypes/",
+    "start:server": "node server.js"
   },
   "devDependencies": {
     "@types/katex": "^0.16.8",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "esbuild": "^0.28.2",
     "rehype-sanitize": "^6.0.0",
     "serve": "^14.2.6",
     "typescript": "^6.0.3"

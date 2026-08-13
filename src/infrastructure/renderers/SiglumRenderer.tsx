@@ -12,8 +12,7 @@ export interface SiglumRenderer {
 }
 
 export const createSiglumRenderer = (
-  defaultBox: RenderBox,
-  onReady?: () => void
+  defaultBox: RenderBox
 ): SiglumRenderer => {
   let compiler: any = null;
   let initialized = false;
@@ -44,7 +43,6 @@ export const createSiglumRenderer = (
 
       await compiler.init();
       initialized = true;
-      onReady?.();
     },
 
     render: async (element: ContentElement, config?: SiglumRendererConfig): Promise<RendererOutput> => {
@@ -129,8 +127,7 @@ ${element.rawContent}
                   data={url}
                   type="application/pdf"
                   width="100%"
-                  height="100%"
-                  style={{ minHeight: '200px' }}
+                  style={{ minHeight: 200 }}
                 />
               </div>
             ),
