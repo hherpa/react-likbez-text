@@ -15,13 +15,7 @@ export const createKaTeXRenderer = (defaultBox: RenderBox): KaTeXRenderer => {
           type: element.type,
           box: element.renderBox || defaultBox,
           content: (
-            <div style={{
-              ...(element.renderBox || defaultBox).style,
-              padding: 8,
-              backgroundColor: '#fff3e0',
-              border: '1px solid #ffb74d',
-              color: '#e65100',
-            }}>
+            <div className="likbez-error">
               KaTeX is not loaded
             </div>
           ),
@@ -45,22 +39,14 @@ export const createKaTeXRenderer = (defaultBox: RenderBox): KaTeXRenderer => {
       }
 
       const renderBox = element.renderBox || defaultBox;
+      const wrapperClass = displayMode ? 'likbez-katex-wrapper-display' : 'likbez-katex-wrapper';
 
       return {
         elementId: element.id,
         type: element.type,
         box: renderBox,
-        content: <div 
-          style={{
-            ...renderBox.style,
-            width: renderBox.dimensions.width,
-            minWidth: renderBox.dimensions.minWidth,
-            maxWidth: renderBox.dimensions.maxWidth,
-            height: renderBox.dimensions.height,
-            minHeight: renderBox.dimensions.minHeight,
-            maxHeight: renderBox.dimensions.maxHeight,
-            overflow: 'auto',
-          }}
+        content: <div
+          className={wrapperClass}
           dangerouslySetInnerHTML={{ __html: html }}
         />,
       };

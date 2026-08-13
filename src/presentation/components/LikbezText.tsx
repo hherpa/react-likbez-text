@@ -7,6 +7,7 @@ const EMPTY_CUSTOM_ELEMENTS: ParserOptions['customElements'] = [];
 
 export interface LikbezTextProps {
   source: string;
+  theme?: 'light' | 'dark' | (string & {});
   
   parserOptions?: ParserOptions;
   
@@ -42,11 +43,11 @@ export interface LikbezTextProps {
 
 const defaultRenderBox: RenderBox = {
   dimensions: { width: 'auto', height: 'auto' },
-  style: { padding: 8, borderRadius: 4 },
 };
 
 export const LikbezText: React.FC<LikbezTextProps> = ({
   source,
+  theme,
   parserOptions,
   defaultBox,
   customBoxes,
@@ -65,6 +66,7 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
 
   const renderBox = useMemo(() => defaultBox || defaultRenderBox, [defaultBox]);
   const parserFn = useMemo(() => createParser({ ...parserOptions, customElements }), [parserOptions, customElements]);
+  const markdownRenderer = useMemo(() => createMarkdownRenderer(renderBox), [renderBox]);
 
   const parsedDocument = useMemo<ParsedDocument>(() => {
     try {
@@ -149,28 +151,31 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
 
     switch (element.type) {
       case 'markdown-katex': {
-        const mdRenderer = createMarkdownRenderer(renderBox);
-        const result = mdRenderer.render(element, { remarkPlugins: [], rehypePlugins: [] });
+        const result = markdownRenderer.render(element, {
+          remarkPlugins: [],
+          rehypePlugins: [],
+          katex: katexConfig,
+        });
         console.log('[LIKBEZ] markdown result:', typeof result.content);
         return result.content;
       }
       case 'siglum': {
         const siglumResult = siglumResultsMap[element.id];
         if (siglumResult && React.isValidElement(siglumResult)) {
-          const props = siglumResult.props;
+          const props = siglumResult.props as Record<string, unknown>;
           const childCount = React.Children.count(siglumResult);
           console.log('[LIKBEZ] siglum element: type=', String(siglumResult.type), 'childCount=', childCount, 'propsKeys=', Object.keys(props || {}));
           if (props.children) {
-            console.log('[LIKBEZ] siglum children type:', typeof props.children, React.isValidElement(props.children) ? 'React element' : 'not element');
-            if (React.isValidElement(props.children)) {
-              console.log('[LIKBEZ] siglum child type:', String(props.children.type), 'props:', JSON.stringify(props.children.props, (k, v) => typeof v === 'function' ? '[fn]' : typeof v === 'object' && v !== null ? '[obj]' : v));
+            console.log('[LIKBEZ] siglum children type:', typeof props.children, React.isValidElement(props.children as React.ReactNode) ? 'React element' : 'not element');
+            if (React.isValidElement(props.children as React.ReactNode)) {
+              console.log('[LIKBEZ] siglum child type:', String((props.children as React.ReactElement).type), 'props:', JSON.stringify((props.children as React.ReactElement).props as Record<string, unknown>, (k, v) => typeof v === 'function' ? '[fn]' : typeof v === 'object' && v !== null ? '[obj]' : v));
             }
           }
         } else {
           console.log('[LIKBEZ] siglum no result yet');
         }
         return siglumResult || (
-          <div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>
+          <div className="likbez-loading">
             Loading Siglum...
           </div>
         );
@@ -182,12 +187,14 @@ export const LikbezText: React.FC<LikbezTextProps> = ({
       default:
         return <div>Unknown type: {element.type}</div>;
     }
-  }, [renderBox, customElements, siglumResultsMap]);
+  }, [renderBox, customElements, siglumResultsMap, markdownRenderer, katexConfig]);
+
+  const themeClass = theme === 'dark' ? 'likbez-theme-dark' : theme && theme !== 'light' ? `likbez-theme-${theme}` : '';
 
   return (
-    <div className={`likbez-text ${className || ''}`} style={style}>
+    <div className={`likbez-text ${themeClass} ${className || ''}`} style={style}>
       {parsedDocument.elements.map((element: ContentElement) => (
-        <div key={element.id} style={{ marginBottom: 8 }}>
+        <div key={element.id} className="likbez-element">
           {renderElement(element)}
         </div>
       ))}

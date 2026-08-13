@@ -3,41 +3,20 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LikbezText - Electron Test</title>
+  <title>LikbezText Example</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <link rel="stylesheet" href="/likbez-text.css">
   <style>
-    * { box-sizing: border-box; }
-    body { margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1e1e1e; color: #e0e0e0; min-height: 100vh; }
-    .container { display: flex; height: 100vh; }
-    .editor-pane { width: 50%; display: flex; flex-direction: column; border-right: 1px solid #333; background: #252525; }
-    .editor-pane-header { padding: 16px 20px; background: #1e1e1e; border-bottom: 1px solid #333; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; }
-    .badge { background: #2196F3; color: white; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
-    .editor-textarea { flex: 1; width: 100%; padding: 20px; border: none; resize: none; font-family: 'Fira Code', 'Consolas', monospace; font-size: 14px; line-height: 1.6; background: #1e1e1e; color: #e0e0e0; }
-    .editor-textarea:focus { outline: none; }
-    .preview-pane { width: 50%; display: flex; flex-direction: column; background: #fafafa; }
-    .preview-pane-header { padding: 16px 20px; background: #f5f5f5; border-bottom: 1px solid #ddd; font-weight: 600; font-size: 14px; }
-    .preview-content { flex: 1; padding: 20px; overflow-y: auto; color: #333; }
-    .markdown-content { line-height: 1.6; }
-    .markdown-content h1 { font-size: 2em; margin: 0 0 0.5em 0; border-bottom: 1px solid #eee; }
-    .markdown-content h2 { font-size: 1.5em; margin: 1em 0 0.5em 0; }
-    .markdown-content h3 { font-size: 1.2em; margin: 1em 0 0.5em 0; }
-    .markdown-content p { margin: 0 0 1em 0; }
-    .markdown-content code { background: #f4f4f4; padding: 2px 6px; border-radius: 3px; font-size: 0.9em; color: #c62828; }
-    .markdown-content pre { background: #263238; padding: 16px; border-radius: 6px; color: #e0e0e0; overflow-x: auto; }
-    .markdown-content strong { color: #212121; }
-    .markdown-content ul, .markdown-content ol { margin: 0 0 1em 0; padding-left: 2em; }
-    .markdown-content li { margin-bottom: 0.5em; }
-    .markdown-content blockquote { margin: 1em 0; padding-left: 1em; border-left: 4px solid #ddd; color: #666; }
-    .katex-display { margin: 0; padding: 12px 16px; background: #e3f2fd; border: 1px solid #90caf9; border-radius: 4px; text-align: center; overflow-x: auto; }
+    * { box-sizing: border-box; margin: 0; }
+    body { font-family: system-ui, sans-serif; background: #1e1e1e; color: #e0e0e0; }
+    .app { display: flex; height: 100vh; }
+    .editor { flex: 1; display: flex; flex-direction: column; }
+    .editor textarea { flex: 1; padding: 20px; border: none; resize: none; font-family: monospace; font-size: 14px; line-height: 1.6; background: inherit; color: inherit; }
+    .editor textarea:focus { outline: none; }
+    .editor-header, .preview-header { padding: 12px 20px; font-weight: 600; font-size: 13px; }
+    .preview { flex: 1; display: flex; flex-direction: column; }
+    .preview-body { flex: 1; padding: 20px; overflow-y: auto; }
   </style>
-</head>
-<body>
-  <div id="root"></div>
-
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
   <script type="importmap">
   {
@@ -47,291 +26,73 @@
     }
   }
   </script>
+
   <script type="module">
-    import { SiglumCompiler } from '@siglum/engine';
-    window.SiglumCompiler = SiglumCompiler;
+    var mod = await import('/node_modules/@siglum/engine/src/index.js');
+    window.SiglumCompiler = mod.SiglumCompiler;
+    window.dispatchEvent(new Event('siglum-ready'));
   </script>
+</head>
+<body>
+  <div id="root"></div>
 
-  <script type="text/babel" data-presets="react">
-    const { useState, useEffect, useMemo, useRef } = React;
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script src="/likbez-text.js"></script>
 
-    const generateId = () => `elem_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+  <script>
+    var h = React.createElement;
+    var LikbezText = LikbezTextLib.LikbezText;
 
-    const parseSource = (source) => {
-      const elements = [];
-      const siglumRegex = /\{siglum\}([\s\S]*?)\{\/siglum\}/g;
-      let lastEnd = 0;
-      let siglumIdx = 0;
+    var SOURCE = [
+      '# LikbezText Demo',
+      '',
+      '## Math',
+      'Inline: $E = mc^2$',
+      '',
+      '$$\\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}$$',
+      '',
+      '## Table',
+      '| Name | Value |',
+      '|------|-------|',
+      '| Alpha | 1 |',
+      '| Beta  | 2 |',
+      '',
+      '## LaTeX',
+      '{siglum}',
+      '\\begin{align}',
+      '  \\int_{-\\infty}^{\\infty} e^{-x^2} dx &= \\sqrt{\\pi}',
+      '\\end{align}',
+      '{/siglum}',
+    ].join('\n');
 
-      let match;
-      while ((match = siglumRegex.exec(source)) !== null) {
-        if (match.index > lastEnd) {
-          const text = source.slice(lastEnd, match.index).trim();
-          if (text) {
-            elements.push({ id: generateId(), type: 'markdown', content: text });
-          }
-        }
-        elements.push({
-          id: `siglum_${siglumIdx++}`,
-          type: 'siglum',
-          content: match[1].trim(),
-        });
-        lastEnd = match.index + match[0].length;
-      }
+    function App() {
+      var src = React.useState(SOURCE);
+      var rdy = React.useState(!!window.SiglumCompiler);
 
-      if (lastEnd < source.length) {
-        const text = source.slice(lastEnd).trim();
-        if (text) {
-          elements.push({ id: generateId(), type: 'markdown', content: text });
-        }
-      }
-
-      return elements;
-    };
-
-    const renderMarkdown = (text) => {
-      let html = text
-        .replace(/^### (.*$)/gm, '<h3>$1</h3>')
-        .replace(/^## (.*$)/gm, '<h2>$1</h2>')
-        .replace(/^# (.*$)/gm, '<h1>$1</h1>')
-        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-        .replace(/`([^`]+)`/g, '<code>$1</code>')
-        .replace(/\$\$([\s\S]+?)\$\$/g, (match, formula) => {
-          try {
-            return katex.renderToString(formula.trim(), { displayMode: true, throwOnError: false });
-          } catch (e) {
-            return `<span style="color:#cc0000">KaTeX Error: ${e}</span>`;
-          }
-        })
-        .replace(/\$([^\$\n]+?)\$/g, (match, formula) => {
-          try {
-            return katex.renderToString(formula.trim(), { displayMode: false, throwOnError: false });
-          } catch (e) {
-            return `<span style="color:#cc0000">KaTeX Error: ${e}</span>`;
-          }
-        })
-        .replace(/\n/g, '<br>');
-
-      return html;
-    };
-
-    const createSiglumRenderer = () => {
-      let compiler = null;
-      let initialized = false;
-      const logs = [];
-      const blobUrls = new Set();
-      let pendingRender = null;
-
-      return {
-        init: async (config) => {
-          if (initialized) return;
-          if (typeof SiglumCompiler === 'undefined') {
-            console.warn('SiglumCompiler not loaded');
-            return;
-          }
-
-          compiler = new SiglumCompiler({
-            bundlesUrl: config?.bundlesUrl || '/bundles',
-            wasmUrl: config?.wasmUrl || '/busytex.wasm',
-            workerUrl: config?.workerUrl || '/worker.js',
-            ctanProxyUrl: config?.ctanProxyUrl,
-            onLog: (msg) => {
-              logs.push(msg);
-              config?.onLog?.(msg);
-            },
-            onProgress: config?.onProgress,
-            verbose: true,
-          });
-
-          await compiler.init();
-          initialized = true;
-        },
-
-        render: async (latex) => {
-          if (!compiler) {
-            return { content: <div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>Initializing Siglum...</div> };
-          }
-
-          if (pendingRender) {
-            await pendingRender;
-          }
-
-          logs.length = 0;
-          const fullLatex = `\\documentclass{article}\\usepackage{amsmath}\\begin{document}${latex}\\end{document}`;
-
-          let result;
-          try {
-            const renderPromise = compiler.compile(fullLatex, { engine: 'pdflatex' });
-            pendingRender = renderPromise;
-            result = await renderPromise;
-            pendingRender = null;
-          } catch (e) {
-            pendingRender = null;
-            return { content: <div style={{ padding: 16, backgroundColor: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828' }}>Compilation error: {String(e)}</div> };
-          }
-
-          if (!result) {
-            return { content: <div style={{ padding: 16, backgroundColor: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828' }}>No result from compiler</div> };
-          }
-
-          if (result.success && result.pdf) {
-            const pdfBuffer = result.pdfIsShared ? new Uint8Array(result.pdf).slice() : new Uint8Array(result.pdf);
-            const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
-            const url = URL.createObjectURL(blob);
-            blobUrls.add(url);
-
-            return {
-              content: (
-                <div style={{ padding: 16, backgroundColor: '#fff', border: '2px solid #2196F3', borderRadius: 8 }}>
-                  <div style={{ fontWeight: 600, marginBottom: 8, color: '#1976D2' }}>LaTeX (Siglum)</div>
-                  <object data={url} type="application/pdf" width="100%" style={{ minHeight: 200 }} />
-                </div>
-              ),
-            };
-          }
-
-          const texErrors = logs.filter(l => l.includes('[TeX ERR]') || l.includes('! LaTeX Error') || l.includes('Error:'));
-          const errorText = texErrors.length > 0 ? texErrors.join('\n') : result.error || 'Unknown error';
-
-          return {
-            content: (
-              <div style={{ padding: 16, backgroundColor: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828', fontSize: 11, maxHeight: 200, overflow: 'auto' }}>
-                <strong>LaTeX Error:</strong>
-                <pre style={{ whiteSpace: 'pre-wrap', margin: '8px 0 0 0' }}>{errorText}</pre>
-              </div>
-            ),
-          };
-        },
-
-        destroy: () => {
-          for (const url of blobUrls) {
-            URL.revokeObjectURL(url);
-          }
-          blobUrls.clear();
-          logs.length = 0;
-          if (compiler) {
-            compiler.terminate?.();
-            compiler = null;
-          }
-          initialized = false;
-        },
-      };
-    };
-
-    const MarkdownElement = ({ content }) => {
-      const html = useMemo(() => renderMarkdown(content), [content]);
-      return <div className="markdown-content" dangerouslySetInnerHTML={{ __html: html }} />;
-    };
-
-    const SiglumElement = ({ latex, renderer }) => {
-      const [content, setContent] = useState(<div style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666' }}>Rendering LaTeX... ({latex.substring(0, 20)}...)</div>);
-      const renderCalled = useRef(false);
-
-      useEffect(() => {
-        renderCalled.current = false;
-        console.log('[SiglumElement] Rendering:', latex);
-        renderer.render(latex).then(res => {
-          console.log('[SiglumElement] Result:', res, 'content props:', res.content?.props);
-          if (!renderCalled.current) {
-            renderCalled.current = true;
-            setContent(res.content);
-          }
-        }).catch(err => {
-          console.error('[SiglumElement] Error:', err);
-          if (!renderCalled.current) {
-            renderCalled.current = true;
-            setContent(<div style={{ padding: 16, backgroundColor: '#ffebee', border: '1px solid #ffcdd2', color: '#c62828' }}>Error: {String(err)}</div>);
-          }
-        });
-      }, [latex, renderer]);
-
-      return <div style={{ marginBottom: 16 }}>{content}</div>;
-    };
-
-    const LikbezText = ({ source, siglumConfig }) => {
-      const [siglumReady, setSiglumReady] = useState(false);
-      const rendererRef = useRef(null);
-
-      const elements = useMemo(() => parseSource(source), [source]);
-
-      useEffect(() => {
-        const renderer = createSiglumRenderer();
-        rendererRef.current = renderer;
-        renderer.init(siglumConfig || {}).then(() => setSiglumReady(true)).catch(console.error);
-        return () => renderer.destroy();
+      React.useEffect(function() {
+        if (window.SiglumCompiler) return;
+        var go = function() { rdy[1](true); };
+        window.addEventListener('siglum-ready', go);
+        return function() { window.removeEventListener('siglum-ready', go); };
       }, []);
 
-      return (
-        <div>
-          {elements.map(el => {
-            if (el.type === 'markdown') {
-              return <MarkdownElement key={el.id} content={el.content} />;
-            }
-            if (el.type === 'siglum') {
-              if (siglumReady && rendererRef.current) {
-                return <SiglumElement key={el.id} latex={el.content} renderer={rendererRef.current} />;
-              }
-              return <div key={el.id} style={{ padding: 16, backgroundColor: '#f5f5f5', border: '1px dashed #ccc', color: '#666', marginBottom: 16 }}>Initializing Siglum...</div>;
-            }
-            return null;
-          })}
-        </div>
+      if (!rdy[0]) return h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', color: '#888' } }, 'Loading...');
+
+      return h('div', { className: 'app' },
+        h('div', { className: 'editor' },
+          h('div', { className: 'editor-header' }, 'Editor'),
+          h('textarea', { value: src[0], onChange: function(e) { src[1](e.target.value); }, spellCheck: false })
+        ),
+        h('div', { className: 'preview' },
+          h('div', { className: 'preview-header' }, 'Preview'),
+          h('div', { className: 'preview-body' }, h(LikbezText, { source: src[0], theme: 'dark' }))
+        )
       );
-    };
+    }
 
-    const DEFAULT_SOURCE = `# Research Paper
-
-## Math
-
-Inline: $E = mc^2$
-
-Display: $$\\nabla \\cdot \\vec{E} = \\frac{\\rho}{\\varepsilon_0}$$
-
-## LaTeX (Siglum)
-
-{siglum}
-\\begin{align}
-  \\int_{-\\infty}^{\\infty} e^{-x^2} dx &= \\sqrt{\\pi}
-\\end{align}
-{/siglum}
-
-## Example with Complex Formula
-
-{siglum}
-\\begin{align}
-\\frac{d}{dx}\\left( e^{x^2} \\right) = e^{x^2} \\cdot 2x
-\\end{align}
-{/siglum}
-`;
-
-    const App = () => {
-      const [source, setSource] = useState(DEFAULT_SOURCE);
-      return (
-        <div className="container">
-          <div className="editor-pane">
-            <div className="editor-pane-header">
-              <span>Editor</span>
-              <span className="badge">Markdown + KaTeX + LaTeX</span>
-            </div>
-            <textarea
-              className="editor-textarea"
-              value={source}
-              onChange={e => setSource(e.target.value)}
-              spellCheck={false}
-            />
-          </div>
-          <div className="preview-pane">
-            <div className="preview-pane-header">Preview</div>
-            <div className="preview-content">
-              <LikbezText source={source} />
-            </div>
-          </div>
-        </div>
-      );
-    };
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    ReactDOM.createRoot(document.getElementById('root')).render(h(App));
   </script>
 </body>
 </html>

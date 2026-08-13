@@ -18,12 +18,7 @@ export const createCustomRenderer = (defaultBox: RenderBox): CustomRenderer => {
           type: element.type,
           box: renderBox,
           content: (
-            <div style={{ 
-              ...renderBox.style,
-              padding: 8,
-              backgroundColor: '#fff3e0',
-              border: '1px solid #ffb74d',
-            }}>
+            <div className="likbez-error">
               Unknown custom element: {String(element.metadata?.customType)}
             </div>
           ),
@@ -35,18 +30,7 @@ export const createCustomRenderer = (defaultBox: RenderBox): CustomRenderer => {
         type: element.type,
         box: renderBox,
         content: (
-          <div
-            style={{
-              ...renderBox.style,
-              width: renderBox.dimensions.width,
-              minWidth: renderBox.dimensions.minWidth,
-              maxWidth: renderBox.dimensions.maxWidth,
-              height: renderBox.dimensions.height,
-              minHeight: renderBox.dimensions.minHeight,
-              maxHeight: renderBox.dimensions.maxHeight,
-              overflow: 'auto',
-            }}
-          >
+          <div className="likbez-custom">
             {config.render(element)}
           </div>
         ),

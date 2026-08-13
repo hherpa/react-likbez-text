@@ -16,7 +16,7 @@ React-компонент для рендеринга текста с подде�
 |-----|-----------|--------|
 | **Markdown** | `#`, `##`, `**bold**`, `*italic*`, `` `code` `` | `# Заголовок` |
 | **KaTeX inline** | `$...$` | `$E = mc^2$` |
-| **KaTeX display** | `$$...$$` | `$$\int_a^b f(x)dx$$` |
+| **KaTeX display** | блочные `$$ ... $$` на отдельных строках | `$$\int_a^b f(x)dx$$` |
 | **Siglum (LaTeX)** | `{siglum}...{/siglum}` | `{siglum}\begin{align}...{/siglum}` |
 
 ## Установка
@@ -39,7 +39,9 @@ import { LikbezText } from './src';
 
 Текст с $E=mc^2$ формулой.
 
-$$x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}$$
+$$
+x = \frac{-b \pm \sqrt{b^2-4ac}}{2a}
+$$
 
 {siglum}
 \begin{align}
@@ -169,13 +171,11 @@ tar -xzf siglum-bundles-v0.1.0.tar.gz -C ./public/
 
 ### 1. Парсинг (UnifiedParser)
 
-Исходный текст проходит через приоритетный парсер:
+Исходный текст разбивается на блоки приоритетным парсером:
 
 1. **{siglum}...{/siglum}** → тип `siglum` (полноценный LaTeX)
-2. **$$** → тип `katex` (блочная формула)
-3. **$** → тип `katex` (inline формула)
-4. **customElements** → тип `custom` (пользовательские блоки)
-5. **всё остальное** → тип `markdown`
+2. **customElements** → тип `custom` (пользовательские блоки)
+3. **всё остальное** → тип `markdown-katex`
 
 Результат: массив `ContentElement[]`, где каждый элемент содержит `id`, `type`, `rawContent`, `renderBox`, `metadata`.
 
@@ -183,10 +183,11 @@ tar -xzf siglum-bundles-v0.1.0.tar.gz -C ./public/
 
 Для каждого элемента выбирается соответствующий рендерер:
 
-- **markdown** → MarkdownRenderer → regex-подстановки → HTML
-- **katex** → KaTeXRenderer → KaTeX → HTML
+- **markdown-katex** → MarkdownRenderer → unified-пайплайн (remark-parse + remark-math + remark-rehype + rehype-katex + rehype-sanitize + rehype-stringify) → HTML
 - **siglum** → SiglumRenderer → LaTeX → компиляция в PDF → blob URL
 - **custom** → CustomRenderer → пользовательская логика
+
+Markdown рендерится через настоящий парсер (unified/remark), формулы `$...$`/`$$...$$` — через remark-math + rehype-katex, а весь HTML проходит через rehype-sanitize (XSS-безопасно).
 
 ### 3. Результат
 

@@ -54,13 +54,7 @@ export const createSiglumRenderer = (
           type: element.type,
           box: renderBox,
           content: (
-            <div style={{
-              ...renderBox.style,
-              padding: 16,
-              backgroundColor: '#f5f5f5',
-              border: '1px dashed #ccc',
-              color: '#666',
-            }}>
+            <div className="likbez-loading">
               Initializing Siglum...
             </div>
           ),
@@ -89,13 +83,7 @@ ${element.rawContent}
             type: element.type,
             box: renderBox,
             content: (
-              <div style={{
-                ...renderBox.style,
-                padding: 16,
-                backgroundColor: '#ffebee',
-                border: '1px solid #ffcdd2',
-                color: '#c62828',
-              }}>
+              <div className="likbez-error">
                 No result from compiler
               </div>
             ),
@@ -115,19 +103,11 @@ ${element.rawContent}
             type: element.type,
             box: renderBox,
             content: (
-              <div
-                style={{
-                  ...renderBox.style,
-                  width: renderBox.dimensions.width,
-                  height: renderBox.dimensions.height,
-                  overflow: 'auto',
-                }}
-              >
+              <div className="likbez-siglum">
                 <object
                   data={url}
                   type="application/pdf"
                   width="100%"
-                  style={{ minHeight: 200 }}
                 />
               </div>
             ),
@@ -150,20 +130,9 @@ ${element.rawContent}
           type: element.type,
           box: renderBox,
           content: (
-            <div style={{
-              ...renderBox.style,
-              padding: 16,
-              backgroundColor: '#ffebee',
-              border: '1px solid #ffcdd2',
-              color: '#c62828',
-              fontSize: '11px',
-              maxHeight: '200px',
-              overflow: 'auto',
-            }}>
+            <div className="likbez-error">
               <strong>LaTeX Error:</strong>
-              <pre style={{ margin: '8px 0 0 0', whiteSpace: 'pre-wrap' }}>
-                {errorText}
-              </pre>
+              <pre>{errorText}</pre>
             </div>
           ),
         };
@@ -173,17 +142,9 @@ ${element.rawContent}
           type: element.type,
           box: renderBox,
           content: (
-            <div style={{
-              ...renderBox.style,
-              padding: 16,
-              backgroundColor: '#ffebee',
-              border: '1px solid #ffcdd2',
-              color: '#c62828',
-            }}>
+            <div className="likbez-error">
               <strong>Compilation error:</strong>
-              <pre style={{ margin: '8px 0 0 0', fontSize: '12px' }}>
-                {String(error)}
-              </pre>
+              <pre>{String(error)}</pre>
             </div>
           ),
         };

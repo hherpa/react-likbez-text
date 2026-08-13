@@ -15,6 +15,7 @@ export interface CustomElementConfig {
 export interface MarkdownRendererConfig {
   remarkPlugins?: any[];
   rehypePlugins?: any[];
+  katex?: KaTeXRendererConfig;
 }
 
 export interface KaTeXRendererConfig {
@@ -22,7 +23,7 @@ export interface KaTeXRendererConfig {
   throwOnError?: boolean;
   errorColor?: string;
   macros?: Record<string, string>;
-  strict?: boolean | string | Function;
+  strict?: boolean | 'ignore' | 'warn' | 'error' | Function;
   trust?: boolean | Function;
 }
 
