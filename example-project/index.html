@@ -27,11 +27,7 @@
   }
   </script>
 
-  <script type="module">
-    var mod = await import('/node_modules/@siglum/engine/src/index.js');
-    window.SiglumCompiler = mod.SiglumCompiler;
-    window.dispatchEvent(new Event('siglum-ready'));
-  </script>
+  <script type="module" src="/siglum-init.js"></script>
 </head>
 <body>
   <div id="root"></div>
@@ -72,7 +68,7 @@
       var rdy = React.useState(!!window.SiglumCompiler);
 
       React.useEffect(function() {
-        if (window.SiglumCompiler) return;
+        if (window.SiglumCompiler) { rdy[1](true); return; }
         var go = function() { rdy[1](true); };
         window.addEventListener('siglum-ready', go);
         return function() { window.removeEventListener('siglum-ready', go); };

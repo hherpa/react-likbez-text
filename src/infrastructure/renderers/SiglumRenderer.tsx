@@ -11,42 +11,111 @@ export interface SiglumRenderer {
   destroy: () => void;
 }
 
+const SIGLUM_LOAD_TIMEOUT_MS = 30000;
+
 export const createSiglumRenderer = (
   defaultBox: RenderBox
 ): SiglumRenderer => {
   let compiler: any = null;
   let initialized = false;
+  let initError: string | null = null;
+  let pendingInitCleanup: (() => void) | null = null;
   const logs: string[] = [];
   const urlStore = new Set<string>();
+
+  const waitForSiglumCompiler = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      if (typeof SiglumCompiler !== 'undefined') {
+        resolve();
+        return;
+      }
+
+      if (typeof window === 'undefined') {
+        reject(new Error('SiglumCompiler is not available in a non-browser environment.'));
+        return;
+      }
+
+      let cleanup: (() => void) | null = null;
+
+      const onReady = () => {
+        if (typeof SiglumCompiler !== 'undefined') {
+          cleanup?.();
+          resolve();
+        }
+      };
+
+      const timer = setTimeout(() => {
+        cleanup?.();
+        reject(new Error(
+          'SiglumCompiler did not become available in time. Load @siglum/engine and dispatch the "siglum-ready" event (or include siglum-init.js).'
+        ));
+      }, SIGLUM_LOAD_TIMEOUT_MS);
+
+      cleanup = () => {
+        if (pendingInitCleanup === cleanup) pendingInitCleanup = null;
+        clearTimeout(timer);
+        window.removeEventListener('siglum-ready', onReady);
+      };
+
+      pendingInitCleanup = cleanup;
+      window.addEventListener('siglum-ready', onReady);
+    });
+  };
 
   return {
     init: async (config?: SiglumRendererConfig): Promise<void> => {
       if (initialized) return;
 
-      if (typeof SiglumCompiler === 'undefined') {
-        console.warn('SiglumCompiler not loaded. Make sure @siglum/engine is available.');
+      if (typeof window !== 'undefined' && window.crossOriginIsolated === true) {
+        console.warn('[LIKBEZ] The document is cross-origin isolated. Chrome disables its built-in PDF viewer in isolated documents, so compiled PDFs may not display via <object>. If cross-origin isolation is not required, remove the COOP/COEP headers.');
+      }
+
+      try {
+        await waitForSiglumCompiler();
+      } catch (error) {
+        initError = error instanceof Error ? error.message : String(error);
+        console.error('[LIKBEZ] siglum init error:', initError);
         return;
       }
 
-      compiler = new SiglumCompiler({
-        bundlesUrl: config?.bundlesUrl || '/bundles',
-        wasmUrl: config?.wasmUrl || '/busytex.wasm',
-        workerUrl: config?.workerUrl || '/worker.js',
-        ctanProxyUrl: config?.ctanProxyUrl,
-        onLog: (msg: string) => {
-          logs.push(msg);
-          config?.onLog?.(msg);
-        },
-        onProgress: config?.onProgress,
-        verbose: true,
-      });
+      try {
+        compiler = new SiglumCompiler({
+          bundlesUrl: config?.bundlesUrl || '/bundles',
+          wasmUrl: config?.wasmUrl || '/busytex.wasm',
+          workerUrl: config?.workerUrl || '/worker.js',
+          ctanProxyUrl: config?.ctanProxyUrl,
+          onLog: (msg: string) => {
+            logs.push(msg);
+            config?.onLog?.(msg);
+          },
+          onProgress: config?.onProgress,
+          verbose: true,
+        });
 
-      await compiler.init();
-      initialized = true;
+        await compiler.init();
+        initialized = true;
+      } catch (error) {
+        initError = error instanceof Error ? error.message : String(error);
+        console.error('[LIKBEZ] siglum init error:', initError);
+      }
     },
 
     render: async (element: ContentElement, config?: SiglumRendererConfig): Promise<RendererOutput> => {
       const renderBox = element.renderBox || defaultBox;
+
+      if (initError) {
+        return {
+          elementId: element.id,
+          type: element.type,
+          box: renderBox,
+          content: (
+            <div className="likbez-error">
+              <strong>Siglum initialization error:</strong>
+              <pre>{initError}</pre>
+            </div>
+          ),
+        };
+      }
 
       if (!initialized || !compiler) {
         return {
@@ -159,11 +228,14 @@ ${element.rawContent}
     },
 
     destroy: () => {
+      pendingInitCleanup?.();
+      pendingInitCleanup = null;
       for (const url of urlStore) {
         URL.revokeObjectURL(url);
       }
       urlStore.clear();
       logs.length = 0;
+      initError = null;
       if (compiler) {
         compiler.terminate?.();
         compiler = null;

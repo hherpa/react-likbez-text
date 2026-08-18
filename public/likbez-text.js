@@ -146,6 +146,7 @@ var LikbezTextLib = (() => {
     createMarkdownRenderer: () => createMarkdownRenderer,
     createParser: () => createParser,
     createSiglumRenderer: () => createSiglumRenderer,
+    defaultRenderBox: () => defaultRenderBox,
     parserFactory: () => parserFactory,
     useLikbezText: () => useLikbezText
   });
@@ -293,35 +294,92 @@ var LikbezTextLib = (() => {
 
   // src/infrastructure/renderers/SiglumRenderer.tsx
   var import_jsx_runtime2 = __require("react/jsx-runtime");
+  var SIGLUM_LOAD_TIMEOUT_MS = 3e4;
   var createSiglumRenderer = (defaultBox) => {
     let compiler2 = null;
     let initialized = false;
+    let initError = null;
+    let pendingInitCleanup = null;
     const logs = [];
     const urlStore = /* @__PURE__ */ new Set();
+    const waitForSiglumCompiler = () => {
+      return new Promise((resolve, reject) => {
+        if (typeof SiglumCompiler !== "undefined") {
+          resolve();
+          return;
+        }
+        if (typeof window === "undefined") {
+          reject(new Error("SiglumCompiler is not available in a non-browser environment."));
+          return;
+        }
+        let cleanup = null;
+        const onReady = () => {
+          if (typeof SiglumCompiler !== "undefined") {
+            cleanup?.();
+            resolve();
+          }
+        };
+        const timer = setTimeout(() => {
+          cleanup?.();
+          reject(new Error(
+            'SiglumCompiler did not become available in time. Load @siglum/engine and dispatch the "siglum-ready" event (or include siglum-init.js).'
+          ));
+        }, SIGLUM_LOAD_TIMEOUT_MS);
+        cleanup = () => {
+          if (pendingInitCleanup === cleanup) pendingInitCleanup = null;
+          clearTimeout(timer);
+          window.removeEventListener("siglum-ready", onReady);
+        };
+        pendingInitCleanup = cleanup;
+        window.addEventListener("siglum-ready", onReady);
+      });
+    };
     return {
       init: async (config) => {
         if (initialized) return;
-        if (typeof SiglumCompiler === "undefined") {
-          console.warn("SiglumCompiler not loaded. Make sure @siglum/engine is available.");
+        if (typeof window !== "undefined" && window.crossOriginIsolated === true) {
+          console.warn("[LIKBEZ] The document is cross-origin isolated. Chrome disables its built-in PDF viewer in isolated documents, so compiled PDFs may not display via <object>. If cross-origin isolation is not required, remove the COOP/COEP headers.");
+        }
+        try {
+          await waitForSiglumCompiler();
+        } catch (error) {
+          initError = error instanceof Error ? error.message : String(error);
+          console.error("[LIKBEZ] siglum init error:", initError);
           return;
         }
-        compiler2 = new SiglumCompiler({
-          bundlesUrl: config?.bundlesUrl || "/bundles",
-          wasmUrl: config?.wasmUrl || "/busytex.wasm",
-          workerUrl: config?.workerUrl || "/worker.js",
-          ctanProxyUrl: config?.ctanProxyUrl,
-          onLog: (msg) => {
-            logs.push(msg);
-            config?.onLog?.(msg);
-          },
-          onProgress: config?.onProgress,
-          verbose: true
-        });
-        await compiler2.init();
-        initialized = true;
+        try {
+          compiler2 = new SiglumCompiler({
+            bundlesUrl: config?.bundlesUrl || "/bundles",
+            wasmUrl: config?.wasmUrl || "/busytex.wasm",
+            workerUrl: config?.workerUrl || "/worker.js",
+            ctanProxyUrl: config?.ctanProxyUrl,
+            onLog: (msg) => {
+              logs.push(msg);
+              config?.onLog?.(msg);
+            },
+            onProgress: config?.onProgress,
+            verbose: true
+          });
+          await compiler2.init();
+          initialized = true;
+        } catch (error) {
+          initError = error instanceof Error ? error.message : String(error);
+          console.error("[LIKBEZ] siglum init error:", initError);
+        }
       },
       render: async (element6, config) => {
         const renderBox = element6.renderBox || defaultBox;
+        if (initError) {
+          return {
+            elementId: element6.id,
+            type: element6.type,
+            box: renderBox,
+            content: /* @__PURE__ */ (0, import_jsx_runtime2.jsxs)("div", { className: "likbez-error", children: [
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("strong", { children: "Siglum initialization error:" }),
+              /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("pre", { children: initError })
+            ] })
+          };
+        }
         if (!initialized || !compiler2) {
           return {
             elementId: element6.id,
@@ -402,11 +460,14 @@ ${element6.rawContent}
         return compiler2.compile(source, options);
       },
       destroy: () => {
+        pendingInitCleanup?.();
+        pendingInitCleanup = null;
         for (const url of urlStore) {
           URL.revokeObjectURL(url);
         }
         urlStore.clear();
         logs.length = 0;
+        initError = null;
         if (compiler2) {
           compiler2.terminate?.();
           compiler2 = null;
@@ -15411,9 +15472,6 @@ ${element6.rawContent}
   var import_react = __toESM(__require("react"));
   var import_jsx_runtime5 = __require("react/jsx-runtime");
   var EMPTY_CUSTOM_ELEMENTS = [];
-  var defaultRenderBox2 = {
-    dimensions: { width: "auto", height: "auto" }
-  };
   var LikbezText = ({
     source,
     theme,
@@ -15432,7 +15490,7 @@ ${element6.rawContent}
     const [siglumResultsMap, setSiglumResultsMap] = (0, import_react.useState)({});
     const siglumIdsRef = (0, import_react.useRef)(/* @__PURE__ */ new Set());
     const abortControllerRef = (0, import_react.useRef)(null);
-    const renderBox = (0, import_react.useMemo)(() => defaultBox || defaultRenderBox2, [defaultBox]);
+    const renderBox = (0, import_react.useMemo)(() => defaultBox || defaultRenderBox, [defaultBox]);
     const parserFn = (0, import_react.useMemo)(() => createParser({ ...parserOptions, customElements }), [parserOptions, customElements]);
     const markdownRenderer = (0, import_react.useMemo)(() => createMarkdownRenderer(renderBox), [renderBox]);
     const parsedDocument = (0, import_react.useMemo)(() => {
@@ -15550,45 +15608,13 @@ ${element6.rawContent}
   var import_react2 = __require("react");
   var useLikbezText = (options) => {
     const [source, setSourceState] = (0, import_react2.useState)(options?.initialSource || "");
-    const [isReady, setIsReady] = (0, import_react2.useState)(true);
     const [isLoading, setIsLoading] = (0, import_react2.useState)(false);
-    const parserFn = (0, import_react2.useMemo)(
-      () => createParser({ customElements: options?.customElements }),
-      [options?.customElements]
-    );
-    const parsedDocument = (0, import_react2.useMemo)(() => {
-      try {
-        return parserFn(source);
-      } catch (error) {
-        console.error("Parse error:", error);
-        return { elements: [] };
-      }
-    }, [source, parserFn]);
     const setSource = (0, import_react2.useCallback)((newSource) => {
       setIsLoading(true);
       setSourceState(newSource);
       setTimeout(() => setIsLoading(false), 0);
     }, []);
-    const parse4 = (0, import_react2.useCallback)((newSource) => {
-      setIsLoading(true);
-      try {
-        const result = parserFn(newSource);
-        setIsLoading(false);
-        return result;
-      } catch (error) {
-        setIsLoading(false);
-        console.error("Parse error:", error);
-        return { elements: [] };
-      }
-    }, [parserFn]);
-    return {
-      source,
-      setSource,
-      parsedDocument,
-      isReady,
-      isLoading,
-      parse: parse4
-    };
+    return { source, setSource, isLoading };
   };
   return __toCommonJS(index_exports);
 })();

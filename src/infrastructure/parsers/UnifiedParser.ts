@@ -5,7 +5,7 @@ let elementIdCounter = 0;
 
 const generateId = () => `elem_${++elementIdCounter}_${Date.now()}`;
 
-const defaultRenderBox: RenderBox = {
+export const defaultRenderBox: RenderBox = {
   dimensions: { width: 'auto', height: 'auto' },
   style: {
     padding: 8,

@@ -210,14 +210,9 @@ useEffect(() {
 
 ## Требования к серверу
 
-Для работы Siglum нужны заголовки:
+Специальных заголовков не нужно — компонент работает на обычном статическом сервере.
 
-```
-Cross-Origin-Opener-Policy: same-origin
-Cross-Origin-Embedder-Policy: require-corp
-Access-Control-Allow-Origin: *
-Cross-Origin-Resource-Policy: cross-origin
-```
+Примечание: если ваш сайт включает cross-origin isolation (заголовки `Cross-Origin-Opener-Policy` + `Cross-Origin-Embedder-Policy`) по другим причинам, браузер Chrome отключает встроенный PDF-вьюер, и скомпилированные PDF не будут отображаться внутри `<object>`. В консоли появится предупреждение об этом. Если изоляция не нужна — просто не выставляйте эти заголовки.
 
 ## Структура проекта
 

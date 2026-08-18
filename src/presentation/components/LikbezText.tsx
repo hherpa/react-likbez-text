@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { ContentElement, ParsedDocument, RenderBox } from '../../domain/entities/Document';
 import { ParserOptions } from '../../domain/interfaces/IParser';
-import { createParser, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer } from '../../infrastructure';
+import { createParser, createSiglumRenderer, createMarkdownRenderer, createCustomRenderer, defaultRenderBox } from '../../infrastructure';
 
 const EMPTY_CUSTOM_ELEMENTS: ParserOptions['customElements'] = [];
 
@@ -40,10 +40,6 @@ export interface LikbezTextProps {
   style?: React.CSSProperties;
   className?: string;
 }
-
-const defaultRenderBox: RenderBox = {
-  dimensions: { width: 'auto', height: 'auto' },
-};
 
 export const LikbezText: React.FC<LikbezTextProps> = ({
   source,

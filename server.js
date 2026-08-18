@@ -17,11 +17,6 @@ const server = http.createServer((req, res) => {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
 
-  if (req.url?.endsWith('.wasm') || req.url?.includes('worker')) {
-    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin');
-    res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless');
-  }
-
   let filePath = path.join(__dirname, 'prototypes', req.url === '/' ? 'textarea-example.html' : req.url);
   
   if (!fs.existsSync(filePath)) {
