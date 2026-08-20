@@ -35,6 +35,7 @@
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script src="/worker.js"></script>
   <script src="/busytex.js"></script>
+  <script src="/pdftocairo.js"></script>
   <script src="/likbez-text.js" defer></script>
 
   <script type="text/babel" data-presets="react">
@@ -59,9 +60,13 @@ $$
 ## LaTeX (Siglum)
 
 {siglum}
+\\documentclass{article}
+\\usepackage{amsmath}
+\\begin{document}
 \\begin{align}
   \\int_{-\\infty}^{\\infty} e^{-x^2} dx &= \\sqrt{\\pi}
 \\end{align}
+\\end{document}
 {/siglum}
 `;
 

@@ -3,6 +3,7 @@ import { ContentElement, RenderBox } from '../../domain/entities/Document';
 import { SiglumRendererConfig, RendererOutput } from '../../domain/interfaces/IRenderer';
 
 declare const SiglumCompiler: any;
+declare const PdfToCairo: any;
 
 export interface SiglumRenderer {
   init: (config?: SiglumRendererConfig) => Promise<void>;
@@ -17,6 +18,7 @@ export const createSiglumRenderer = (
   defaultBox: RenderBox
 ): SiglumRenderer => {
   let compiler: any = null;
+  let pdftocairo: any = null;
   let initialized = false;
   let initError: string | null = null;
   let pendingInitCleanup: (() => void) | null = null;
@@ -98,6 +100,17 @@ export const createSiglumRenderer = (
         initError = error instanceof Error ? error.message : String(error);
         console.error('[LIKBEZ] siglum init error:', initError);
       }
+
+      try {
+        if (typeof PdfToCairo !== 'undefined') {
+          pdftocairo = await PdfToCairo();
+          console.log('[LIKBEZ] pdftocairo loaded');
+        } else {
+          console.warn('[LIKBEZ] PdfToCairo not available, SVG conversion disabled');
+        }
+      } catch (error) {
+        console.warn('[LIKBEZ] pdftocairo init failed:', error);
+      }
     },
 
     render: async (element: ContentElement, config?: SiglumRendererConfig): Promise<RendererOutput> => {
@@ -132,14 +145,7 @@ export const createSiglumRenderer = (
 
       logs.length = 0;
 
-      const latexSource = `
-\\documentclass{article}
-\\usepackage{amsmath}
-\\usepackage{amssymb}
-\\begin{document}
-${element.rawContent}
-\\end{document}
-`;
+      const latexSource = element.rawContent;
 
       try {
         const result = await compiler.compile(latexSource, {
@@ -163,6 +169,28 @@ ${element.rawContent}
           const pdfBuffer = result.pdfIsShared
             ? new Uint8Array(result.pdf).slice()
             : new Uint8Array(result.pdf);
+
+          if (pdftocairo) {
+            try {
+              pdftocairo.FS.writeFile('input.pdf', pdfBuffer);
+              pdftocairo._convertPdfToSvg();
+              const svg = pdftocairo.FS.readFile('input.svg', { encoding: 'utf8' });
+              pdftocairo.FS.unlink('input.pdf');
+              pdftocairo.FS.unlink('input.svg');
+
+              return {
+                elementId: element.id,
+                type: element.type,
+                box: renderBox,
+                content: (
+                  <div className="likbez-siglum" dangerouslySetInnerHTML={{ __html: svg }} />
+                ),
+              };
+            } catch (svgError) {
+              console.error('[LIKBEZ] PDF→SVG conversion failed:', svgError);
+            }
+          }
+
           const blob = new Blob([pdfBuffer], { type: 'application/pdf' });
           const url = URL.createObjectURL(blob);
           urlStore.add(url);

@@ -33,6 +33,7 @@ export interface SiglumRendererConfig {
   wasmUrl?: string;
   workerUrl?: string;
   ctanProxyUrl?: string;
+  pdftocairoUrl?: string;
   onLog?: (msg: string) => void;
   onProgress?: (stage: string, detail: any) => void;
 }

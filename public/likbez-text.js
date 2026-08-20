@@ -297,6 +297,7 @@ var LikbezTextLib = (() => {
   var SIGLUM_LOAD_TIMEOUT_MS = 3e4;
   var createSiglumRenderer = (defaultBox) => {
     let compiler2 = null;
+    let pdftocairo2 = null;
     let initialized = false;
     let initError = null;
     let pendingInitCleanup = null;
@@ -366,6 +367,16 @@ var LikbezTextLib = (() => {
           initError = error instanceof Error ? error.message : String(error);
           console.error("[LIKBEZ] siglum init error:", initError);
         }
+        try {
+          if (typeof PdfToCairo !== "undefined") {
+            pdftocairo2 = await PdfToCairo();
+            console.log("[LIKBEZ] pdftocairo loaded");
+          } else {
+            console.warn("[LIKBEZ] PdfToCairo not available, SVG conversion disabled");
+          }
+        } catch (error) {
+          console.warn("[LIKBEZ] pdftocairo init failed:", error);
+        }
       },
       render: async (element6, config) => {
         const renderBox = element6.renderBox || defaultBox;
@@ -389,14 +400,7 @@ var LikbezTextLib = (() => {
           };
         }
         logs.length = 0;
-        const latexSource = `
-\\documentclass{article}
-\\usepackage{amsmath}
-\\usepackage{amssymb}
-\\begin{document}
-${element6.rawContent}
-\\end{document}
-`;
+        const latexSource = element6.rawContent;
         try {
           const result = await compiler2.compile(latexSource, {
             engine: config?.engine || "pdflatex"
@@ -411,6 +415,23 @@ ${element6.rawContent}
           }
           if (result.success && result.pdf) {
             const pdfBuffer = result.pdfIsShared ? new Uint8Array(result.pdf).slice() : new Uint8Array(result.pdf);
+            if (pdftocairo2) {
+              try {
+                pdftocairo2.FS.writeFile("input.pdf", pdfBuffer);
+                pdftocairo2._convertPdfToSvg();
+                const svg = pdftocairo2.FS.readFile("input.svg", { encoding: "utf8" });
+                pdftocairo2.FS.unlink("input.pdf");
+                pdftocairo2.FS.unlink("input.svg");
+                return {
+                  elementId: element6.id,
+                  type: element6.type,
+                  box: renderBox,
+                  content: /* @__PURE__ */ (0, import_jsx_runtime2.jsx)("div", { className: "likbez-siglum", dangerouslySetInnerHTML: { __html: svg } })
+                };
+              } catch (svgError) {
+                console.error("[LIKBEZ] PDF\u2192SVG conversion failed:", svgError);
+              }
+            }
             const blob = new Blob([pdfBuffer], { type: "application/pdf" });
             const url = URL.createObjectURL(blob);
             urlStore.add(url);
